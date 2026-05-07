@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NOVLI Dashboard — 07 May 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root[data-theme="dark"] {
+    --bg:         #0f1117;
+    --surface:    #1a1d27;
+    --surface2:   #22263a;
+    --border:     #2e3348;
+    --text:       #e8eaf0;
+    --text2:      #b0b8d8;
+    --muted:      #7c82a0;
+    --blue:       #4f8ef7;
+    --green:      #3ecf8e;
+    --orange:     #f97316;
+    --red:        #f43f5e;
+    --yellow:     #fbbf24;
+    --purple:     #a78bfa;
+    --grid:       #2e3348;
+    --tip-bg:     #1a1d27;
+    --shadow:     0 4px 24px rgba(0,0,0,0.4);
+    --toggle-bg:  #22263a;
+  }
+  :root[data-theme="light"] {
+    --bg:         #f0f2f8;
+    --surface:    #ffffff;
+    --surface2:   #f5f6fa;
+    --border:     #dde1ef;
+    --text:       #1a1d2e;
+    --text2:      #4a4f6a;
+    --muted:      #8890b0;
+    --blue:       #3b7de8;
+    --green:      #17a871;
+    --orange:     #e06b10;
+    --red:        #e0284a;
+    --yellow:     #d4930a;
+    --purple:     #7c5ce8;
+    --grid:       #e4e8f5;
+    --tip-bg:     #ffffff;
+    --shadow:     0 4px 24px rgba(30,40,80,0.10);
+    --toggle-bg:  #e8eaf5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    transition: background 0.25s, color 0.25s;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo { font-size: 26px; line-height: 1; }
+  .header-left h1 { font-size: 19px; font-weight: 700; color: var(--blue); letter-spacing: -0.3px; }
+  .header-left p  { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .theme-toggle {
+    background: var(--toggle-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .theme-toggle:hover { background: var(--surface2); }
+
+  /* Layout */
+  .main { padding: 28px 32px; max-width: 1440px; margin: 0 auto; }
+
+  /* Section title */
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    margin-top: 36px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* KPI Cards */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 22px 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s;
+  }
+  .card:hover { transform: translateY(-2px); }
+  .card-accent {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 4px; border-radius: 16px 16px 0 0;
+  }
+  .card.blue   .card-accent { background: linear-gradient(90deg,#4f8ef7,#7ab0ff); }
+  .card.orange .card-accent { background: linear-gradient(90deg,#f97316,#fbbf24); }
+  .card.red    .card-accent { background: linear-gradient(90deg,#f43f5e,#ff8fa3); }
+  .card.purple .card-accent { background: linear-gradient(90deg,#a78bfa,#c4b5fd); }
+  .card.green  .card-accent { background: linear-gradient(90deg,#3ecf8e,#7fffcf); }
+  .card-icon   { font-size: 20px; margin-bottom: 10px; display: block; }
+  .card-label  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.9px; color: var(--muted); margin-bottom: 5px; }
+  .card-value  { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -2px; }
+  .card.blue   .card-value { color: var(--blue); }
+  .card.orange .card-value { color: var(--orange); }
+  .card.red    .card-value { color: var(--red); }
+  .card.purple .card-value { color: var(--purple); }
+  .card.green  .card-value { color: var(--green); }
+  .card-sub    { font-size: 12px; color: var(--muted); margin-top: 5px; }
+
+  /* Chart panels */
+  .chart-grid   { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+  .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr;  gap: 18px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .panel-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .panel-sub   { font-size: 11px; color: var(--muted); margin-bottom: 18px; }
+  .panel canvas { width: 100% !important; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.7px;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .pill.open      { background: rgba(79,142,247,0.15); color: var(--blue); }
+  .pill.needclose { background: rgba(249,115,22,0.15);  color: var(--orange); }
+  .pill.improved  { background: rgba(62,207,142,0.15);  color: var(--green); }
+  .pill.nofix     { background: rgba(244,63,94,0.15);   color: var(--red); }
+
+  /* Payload stat chips */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .stat-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .stat-chip.s-green { border-left: 4px solid var(--green); }
+  .stat-chip.s-red   { border-left: 4px solid var(--red); }
+  .stat-chip.s-blue  { border-left: 4px solid var(--blue); }
+  .stat-chip.s-muted { border-left: 4px solid var(--muted); }
+  .stat-chip .val { font-size: 32px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+  .stat-chip.s-green .val { color: var(--green); }
+  .stat-chip.s-red   .val { color: var(--red); }
+  .stat-chip.s-blue  .val { color: var(--blue); }
+  .stat-chip.s-muted .val { color: var(--muted); }
+  .stat-chip .lbl { font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.7px; }
+
+  /* Footer */
+  .footer {
+    text-align: center; padding: 28px;
+    color: var(--muted); font-size: 12px;
+    border-top: 1px solid var(--border); margin-top: 48px;
+  }
+
+  /* Category summary chips */
+  .cat-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 90px;
+    transition: transform 0.12s;
+  }
+  .cat-chip:hover { transform: translateY(-2px); }
+  .cat-chip-val { font-size: 24px; font-weight: 800; line-height: 1; color: var(--blue); }
+  .cat-chip-lbl { font-size: 10px; font-weight: 600; color: var(--muted); margin-top: 4px; text-align: center; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Category dropdown */
+  .cat-select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 36px 8px 14px; font-size: 13px;
+    font-weight: 600; color: var(--text); cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237c82a0' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    min-width: 220px; transition: border-color 0.15s;
+  }
+  .cat-select:focus { outline: none; border-color: var(--blue); }
+  .cat-select option { background: var(--surface); }
+
+  @media (max-width: 1100px) { .cards { grid-template-columns: repeat(3,1fr); } }
+  @media (max-width: 900px)  { .chart-grid, .chart-grid-2 { grid-template-columns: 1fr; } }
+  @media (max-width: 700px)  { .cards { grid-template-columns: repeat(2,1fr); } .stat-row { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 600px)  { .main { padding: 14px; } .header { padding: 14px 16px; } }
+
+  /* Radar pulse markers */
+  .site-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    position: relative;
+  }
+  .site-dot::before, .site-dot::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: radar-ring 2.2s ease-out infinite;
+  }
+  .site-dot::after { animation-delay: 1.1s; }
+  @keyframes radar-ring {
+    0%   { transform: translate(-50%,-50%) scale(1);   opacity: 0.8; }
+    100% { transform: translate(-50%,-50%) scale(4.5); opacity: 0; }
+  }
+  .dot-green { background: #3ecf8e; }
+  .dot-green::before, .dot-green::after { border: 2px solid #3ecf8e; }
+  .dot-red   { background: #f43f5e; }
+  .dot-red::before,   .dot-red::after   { border: 2px solid #f43f5e; }
+
+  #siteMap .leaflet-popup-content-wrapper {
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  #siteMap .leaflet-popup-tip { background: var(--surface); }
+
+  /* KPI Sidebar */
+  #kpiSidebar {
+    position: fixed; top: 0; right: -400px; width: 380px; height: 100vh;
+    background: var(--surface); border-left: 1px solid var(--border);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.35);
+    z-index: 3000; overflow-y: auto;
+    transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
+    padding: 20px 20px 40px;
+  }
+  #kpiSidebar.open { right: 0; }
+  .kpi-sidebar-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 18px; gap: 10px;
+  }
+  .kpi-sidebar-title { font-size: 15px; font-weight: 700; color: var(--blue); line-height: 1.4; }
+  .kpi-sidebar-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .kpi-close-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer; color: var(--muted);
+    flex-shrink: 0; transition: background 0.15s;
+  }
+  .kpi-close-btn:hover { background: var(--border); color: var(--text); }
+  .kpi-metric-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.9px; color: var(--muted); margin-bottom: 6px;
+  }
+  .kpi-chart-wrap { margin-bottom: 22px; }
+  .kpi-no-data {
+    text-align: center; color: var(--muted); font-size: 13px;
+    padding: 48px 0;
+  }
+
+  /* ── Chat Widget ──────────────────────────────────────── */
+  #chatToggle {
+    position: fixed; bottom: 28px; right: 28px; z-index: 4000;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: linear-gradient(135deg, #4f8ef7, #a78bfa);
+    border: none; cursor: pointer; font-size: 22px;
+    box-shadow: 0 4px 20px rgba(79,142,247,0.45);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    color: #fff;
+  }
+  #chatToggle:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(79,142,247,0.6); }
+
+  #chatPanel {
+    position: fixed; bottom: 94px; right: 28px; z-index: 4000;
+    width: 360px; height: 520px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column;
+    transform: translateY(20px) scale(0.96);
+    opacity: 0; pointer-events: none;
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.25s;
+    overflow: hidden;
+  }
+  #chatPanel.open { transform: translateY(0) scale(1); opacity: 1; pointer-events: all; }
+
+  #chatHeader {
+    background: linear-gradient(135deg, #4f8ef7, #a78bfa);
+    padding: 14px 16px; display: flex; align-items: center;
+    justify-content: space-between; flex-shrink: 0;
+  }
+  .chat-header-info { display: flex; align-items: center; gap: 10px; }
+  .chat-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .chat-header-text .chat-name { font-size: 14px; font-weight: 700; color: #fff; }
+  .chat-header-text .chat-model { font-size: 10px; color: rgba(255,255,255,0.75); }
+  #chatCloseBtn {
+    background: rgba(255,255,255,0.15); border: none; border-radius: 8px;
+    width: 28px; height: 28px; cursor: pointer; color: #fff; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  #chatCloseBtn:hover { background: rgba(255,255,255,0.3); }
+
+  #chatMessages {
+    flex: 1; overflow-y: auto; padding: 14px 14px 8px;
+    display: flex; flex-direction: column; gap: 10px;
+    scroll-behavior: smooth;
+  }
+  #chatMessages::-webkit-scrollbar { width: 4px; }
+  #chatMessages::-webkit-scrollbar-track { background: transparent; }
+  #chatMessages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .chat-msg { display: flex; flex-direction: column; max-width: 88%; }
+  .chat-msg.user { align-self: flex-end; align-items: flex-end; }
+  .chat-msg.ai   { align-self: flex-start; align-items: flex-start; }
+  .chat-bubble {
+    padding: 9px 13px; border-radius: 14px;
+    font-size: 13px; line-height: 1.55; word-break: break-word;
+  }
+  .chat-msg.user .chat-bubble {
+    background: linear-gradient(135deg, #4f8ef7, #a78bfa);
+    color: #fff; border-bottom-right-radius: 4px;
+  }
+  .chat-msg.ai .chat-bubble {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-bottom-left-radius: 4px;
+  }
+  .chat-typing {
+    display: flex; gap: 4px; align-items: center; padding: 10px 13px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 14px; border-bottom-left-radius: 4px; width: fit-content;
+  }
+  .chat-typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+    animation: typing-dot 1.2s ease-in-out infinite;
+  }
+  .chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+  .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing-dot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  #chatInputArea {
+    padding: 12px 14px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; flex-shrink: 0; background: var(--surface);
+  }
+  #chatInput {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 22px; padding: 9px 16px; font-size: 13px;
+    color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  #chatInput:focus { border-color: var(--blue); }
+  #chatInput::placeholder { color: var(--muted); }
+  #chatSendBtn {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, #4f8ef7, #a78bfa);
+    border: none; cursor: pointer; color: #fff; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  #chatSendBtn:hover { transform: scale(1.08); }
+  #chatSendBtn:disabled { opacity: 0.5; cursor: default; transform: none; }
+</style>
+</head>
+<body>
+
+<!-- KPI Sidebar -->
+<div id="kpiSidebar">
+  <div class="kpi-sidebar-header">
+    <div>
+      <div class="kpi-sidebar-title" id="kpiSiteTitle"></div>
+      <div class="kpi-sidebar-sub">Tren KPI 7 Hari Terakhir</div>
+    </div>
+    <button class="kpi-close-btn" onclick="closeKpiSidebar()">&#x2715;</button>
+  </div>
+  <div id="kpiChartsContainer"></div>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">📡</div>
+    <div>
+      <h1>NOVLI Dashboard</h1>
+      <p>Monitoring Ticket Sumbagut — Regional Overview</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="badge">📅 07 May 2026</span>
+    <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">☀️ Light Mode</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- KPI Cards -->
+  <div class="section-title">Ringkasan Regional</div>
+  <div class="cards">
+    <div class="card blue">
+      <div class="card-accent"></div>
+      <span class="card-icon">🔵</span>
+      <div class="card-label">Total Open</div>
+      <div class="card-value">32</div>
+      <div class="card-sub">Tiket aktif</div>
+    </div>
+    <div class="card orange">
+      <div class="card-accent"></div>
+      <span class="card-icon">🟠</span>
+      <div class="card-label">Need Close</div>
+      <div class="card-value">45</div>
+      <div class="card-sub">Perlu tindaklanjut</div>
+    </div>
+    <div class="card red">
+      <div class="card-accent"></div>
+      <span class="card-icon">🔴</span>
+      <div class="card-label">Prioritas P1</div>
+      <div class="card-value">32</div>
+      <div class="card-sub">High priority</div>
+    </div>
+    <div class="card purple">
+      <div class="card-accent"></div>
+      <span class="card-icon">🟣</span>
+      <div class="card-label">Prioritas P2</div>
+      <div class="card-value">0</div>
+      <div class="card-sub">Medium priority</div>
+    </div>
+    <div class="card green">
+      <div class="card-accent"></div>
+      <span class="card-icon">🟢</span>
+      <div class="card-label">Total Aktif</div>
+      <div class="card-value">32</div>
+      <div class="card-sub">Open + NeedClose</div>
+    </div>
+  </div>
+
+  <!-- 7-Day Trend -->
+  <div class="section-title">Trend 7 Hari Terakhir</div>
+  <div class="chart-grid">
+    <div class="panel">
+      <div class="panel-title">Pergerakan Tiket Harian</div>
+      <div class="panel-sub">Open · Closed · Cleared · ReOpen</div>
+      <canvas id="trendChart" height="200"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Komposisi Status</div>
+      <div class="panel-sub">Total kumulatif 7 hari</div>
+      <canvas id="donutChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Closed Tickets Filter -->
+  <div class="section-title">Tiket Closed — 7 Hari Terakhir</div>
+  <div class="panel">
+    <!-- Category summary chips -->
+    <div id="catSummary" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <div class="panel-title">Filter Berdasarkan Kategori</div>
+        <div class="panel-sub" id="clearedCount"></div>
+      </div>
+      <select id="catFilter" class="cat-select">
+        <option value="ALL">Semua Kategori</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ticket ID</th><th>Site ID</th><th>NOP</th><th>Tgl Clear</th>
+            <th>Kategori</th><th>Notes</th><th>Closed By</th>
+          </tr>
+        </thead>
+        <tbody id="clearedTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Payload Improvement -->
+  <div class="section-title">Payload Improvement — Tiket Cleared 7 Hari Terakhir</div>
+  <div class="stat-row">
+    <div class="stat-chip s-green">
+      <div class="val">14</div>
+      <div class="lbl">✅ Payload Improve</div>
+    </div>
+    <div class="stat-chip s-red">
+      <div class="val">10</div>
+      <div class="lbl">❌ No Improve</div>
+    </div>
+    <div class="stat-chip s-blue">
+      <div class="val">58%</div>
+      <div class="lbl">📈 Improve Rate</div>
+    </div>
+    <div class="stat-chip s-muted">
+      <div class="val">24</div>
+      <div class="lbl">🎯 Total Cleared</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="panel">
+      <div class="panel-title">Payload GB — Sebelum vs Sesudah Clear</div>
+      <div class="panel-sub">🟢 Naik = improve &nbsp;·&nbsp; 🔴 Turun/sama = no improve &nbsp;·&nbsp; Top 30 site</div>
+      <canvas id="payloadChart" height="380"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Distribusi Hasil Clear</div>
+      <div class="panel-sub">Persentase tiket yang payload-nya membaik</div>
+      <canvas id="payloadDonut" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-top:28px">Peta Payload Site</div>
+  <div class="chart-grid-2">
+    <div class="panel">
+      <div class="panel-title" style="margin-bottom:4px">&#128308; Site Open — Payload Menurun</div>
+      <div class="panel-sub" style="margin-bottom:12px">Tiket aktif yang payload-nya makin turun sejak dibuka</div>
+      <div id="mapLeft" style="height:440px;border-radius:12px;overflow:hidden;"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title" style="margin-bottom:4px">&#128994; Site Cleared — Payload Naik</div>
+      <div class="panel-sub" style="margin-bottom:12px">Tiket cleared yang payload-nya membaik setelah clear</div>
+      <div id="mapRight" style="height:440px;border-radius:12px;overflow:hidden;"></div>
+    </div>
+  </div>
+
+  <!-- NOP Detail Table -->
+  <div class="section-title">Detail per NOP</div>
+  <div class="panel">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>NOP</th><th>Open</th><th>Need Close</th><th>Total Aktif</th>
+            <th>0–3 Hari</th><th>4–7 Hari</th><th>8–14 Hari</th><th>&gt;14 Hari</th>
+          </tr>
+        </thead>
+        <tbody id="nopTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Generated by NOVLI Bot &nbsp;·&nbsp; 2026-05-07 &nbsp;·&nbsp; Data: SQA_SUMBAGUT
+</div>
+
+<!-- Chat Widget -->
+<button id="chatToggle" onclick="toggleChat()" title="NOVLI AI Assistant">&#x1F4AC;</button>
+<div id="chatPanel">
+  <div id="chatHeader">
+    <div class="chat-header-info">
+      <div class="chat-avatar">&#x1F916;</div>
+      <div class="chat-header-text">
+        <div class="chat-name">NOVLI AI Assistant</div>
+        <div class="chat-model">Powered by Gemini</div>
+      </div>
+    </div>
+    <button id="chatCloseBtn" onclick="toggleChat()">&#x2715;</button>
+  </div>
+  <div id="chatMessages">
+    <div class="chat-msg ai">
+      <div class="chat-bubble">Halo! Saya AI assistant NOVLI Dashboard &#x1F44B;<br><br>Tanya apa saja tentang data tiket, NOP, payload, atau aging ya!</div>
+    </div>
+  </div>
+  <div id="chatInputArea">
+    <input id="chatInput" type="text" placeholder="Tanya seputar data dashboard..." onkeydown="if(event.key==='Enter')sendChat()"/>
+    <button id="chatSendBtn" onclick="sendChat()">&#x279E;</button>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const TREND_LABELS   = ["01 May", "02 May", "03 May", "04 May", "05 May", "06 May", "07 May"];
+const TREND_OPENED   = [0, 0, 0, 18, 0, 0, 18];
+const TREND_CLOSED   = [0, 0, 0, 0, 1, 0, 1];
+const TREND_CLEARED  = [0, 0, 0, 23, 1, 0, 0];
+const TREND_REOPENED = [0, 0, 0, 0, 0, 0, 0];
+const NOP_SUMMARY    = [{"nop": "ACEH", "total_open": 1, "total_needclose": 0}, {"nop": "BINJAI", "total_open": 2, "total_needclose": 5}, {"nop": "MEDAN", "total_open": 24, "total_needclose": 36}, {"nop": "PADANG SIDEMPUAN", "total_open": 1, "total_needclose": 0}, {"nop": "PEMATANG SIANTAR", "total_open": 4, "total_needclose": 3}, {"nop": "RANTAU PRAPAT", "total_open": 0, "total_needclose": 1}];
+const CLEARED_DATA   = [{"ticket_id": "MDN76820260406", "site_id": "MDN768", "nop": "MEDAN", "clear_date": "2026-05-07", "category": "Troubleshooting", "note": "Avaibility problem, sudah kembali normal", "closed_by": "Akira"}, {"ticket_id": "LBP18320260504", "site_id": "LBP183", "nop": "MEDAN", "clear_date": "2026-05-05", "category": "Replace LAN Cable", "note": "Replace Cable LAN pada site", "closed_by": "Akira"}];
+const AGING_DATA     = [{"nop": "ACEH", "bracket_0_3": 0, "bracket_4_7": 0, "bracket_8_14": 1, "bracket_14_plus": 0}, {"nop": "BINJAI", "bracket_0_3": 2, "bracket_4_7": 0, "bracket_8_14": 0, "bracket_14_plus": 0}, {"nop": "MEDAN", "bracket_0_3": 13, "bracket_4_7": 2, "bracket_8_14": 2, "bracket_14_plus": 7}, {"nop": "PADANG SIDEMPUAN", "bracket_0_3": 1, "bracket_4_7": 0, "bracket_8_14": 0, "bracket_14_plus": 0}, {"nop": "PEMATANG SIANTAR", "bracket_0_3": 2, "bracket_4_7": 1, "bracket_8_14": 0, "bracket_14_plus": 1}];
+const PAYLOAD_DATA   = [{"ticket_id": "KTN03820260423", "site_id": "KTN038", "nop": "PEMATANG SIANTAR", "open_date": "2026-04-23", "clear_date": "2026-05-04", "pay_open": 0.0, "pay_clear": 1042.0, "improved": true, "delta": 1042.0}, {"ticket_id": "MDX15820260420", "site_id": "MDX158", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1363.0, "pay_clear": 1482.0, "improved": true, "delta": 119.0}, {"ticket_id": "MDN01620260420", "site_id": "MDN016", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 882.0, "pay_clear": 991.0, "improved": true, "delta": 109.0}, {"ticket_id": "MDN20220260420", "site_id": "MDN202", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1675.0, "pay_clear": 1766.0, "improved": true, "delta": 91.0}, {"ticket_id": "MDX12920260420", "site_id": "MDX129", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 665.0, "pay_clear": 731.0, "improved": true, "delta": 66.0}, {"ticket_id": "MDN63920260406", "site_id": "MDN639", "nop": "MEDAN", "open_date": "2026-04-06", "clear_date": "2026-05-04", "pay_open": 614.0, "pay_clear": 670.0, "improved": true, "delta": 56.0}, {"ticket_id": "LBP85820260420", "site_id": "LBP858", "nop": "PEMATANG SIANTAR", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 532.0, "pay_clear": 584.0, "improved": true, "delta": 52.0}, {"ticket_id": "MDN39220260420", "site_id": "MDN392", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1291.0, "pay_clear": 1335.0, "improved": true, "delta": 44.0}, {"ticket_id": "MDN99420260420", "site_id": "MDN994", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1104.0, "pay_clear": 1137.0, "improved": true, "delta": 33.0}, {"ticket_id": "MDN05220260420", "site_id": "MDN052", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1059.0, "pay_clear": 1084.0, "improved": true, "delta": 25.0}, {"ticket_id": "MDN19120260420", "site_id": "MDN191", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1505.0, "pay_clear": 1527.0, "improved": true, "delta": 22.0}, {"ticket_id": "LBP18320260430", "site_id": "LBP183", "nop": "MEDAN", "open_date": "2026-04-30", "clear_date": "2026-05-05", "pay_open": 611.0, "pay_clear": 628.0, "improved": true, "delta": 17.0}, {"ticket_id": "LBP47320260420", "site_id": "LBP473", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1187.0, "pay_clear": 1201.0, "improved": true, "delta": 14.0}, {"ticket_id": "MDX25920260420", "site_id": "MDX259", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 855.0, "pay_clear": 866.0, "improved": true, "delta": 11.0}, {"ticket_id": "LBP00720260423", "site_id": "LBP007", "nop": "MEDAN", "open_date": "2026-04-23", "clear_date": "2026-05-04", "pay_open": 0.0, "pay_clear": 0.0, "improved": false, "delta": 0.0}, {"ticket_id": "LBP32320260420", "site_id": "LBP323", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 643.0, "pay_clear": 640.0, "improved": false, "delta": -3.0}, {"ticket_id": "MDN57920260420", "site_id": "MDN579", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1201.0, "pay_clear": 1196.0, "improved": false, "delta": -5.0}, {"ticket_id": "LBP02020260420", "site_id": "LBP020", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 761.0, "pay_clear": 732.0, "improved": false, "delta": -29.0}, {"ticket_id": "LBP23220260420", "site_id": "LBP232", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1264.0, "pay_clear": 1225.0, "improved": false, "delta": -39.0}, {"ticket_id": "MDN23820260423", "site_id": "MDN238", "nop": "MEDAN", "open_date": "2026-04-23", "clear_date": "2026-05-04", "pay_open": 1538.0, "pay_clear": 1494.0, "improved": false, "delta": -44.0}, {"ticket_id": "MDN04620260420", "site_id": "MDN046", "nop": "MEDAN", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 379.0, "pay_clear": 326.0, "improved": false, "delta": -53.0}, {"ticket_id": "MDN22720260423", "site_id": "MDN227", "nop": "MEDAN", "open_date": "2026-04-23", "clear_date": "2026-05-04", "pay_open": 1663.0, "pay_clear": 1603.0, "improved": false, "delta": -60.0}, {"ticket_id": "LBP86020260420", "site_id": "LBP860", "nop": "PEMATANG SIANTAR", "open_date": "2026-04-20", "clear_date": "2026-05-04", "pay_open": 1344.0, "pay_clear": 1262.0, "improved": false, "delta": -82.0}, {"ticket_id": "MDN65420260423", "site_id": "MDN654", "nop": "MEDAN", "open_date": "2026-04-23", "clear_date": "2026-05-04", "pay_open": 1407.0, "pay_clear": 1305.0, "improved": false, "delta": -102.0}];
+const PAY_LABELS     = ["KTN038", "MDX158", "MDN016", "MDN202", "MDX129", "MDN639", "LBP858", "MDN392", "MDN994", "MDN052", "MDN191", "LBP183", "LBP473", "MDX259", "LBP007", "LBP323", "MDN579", "LBP020", "LBP232", "MDN238", "MDN046", "MDN227", "LBP860", "MDN654"];
+const PAY_BEFORE     = [0.0, 1363.0, 882.0, 1675.0, 665.0, 614.0, 532.0, 1291.0, 1104.0, 1059.0, 1505.0, 611.0, 1187.0, 855.0, 0.0, 643.0, 1201.0, 761.0, 1264.0, 1538.0, 379.0, 1663.0, 1344.0, 1407.0];
+const PAY_AFTER      = [1042.0, 1482.0, 991.0, 1766.0, 731.0, 670.0, 584.0, 1335.0, 1137.0, 1084.0, 1527.0, 628.0, 1201.0, 866.0, 0.0, 640.0, 1196.0, 732.0, 1225.0, 1494.0, 326.0, 1603.0, 1262.0, 1305.0];
+const PAY_COLORS     = ["rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(62,207,142,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)", "rgba(244,63,94,0.85)"];
+const TOTAL_IMPROVED     = 14;
+const TOTAL_NOT_IMPROVED = 10;
+const SITE_COORDS        = {"BJI232": {"lat": 3.560977, "lon": 98.495709, "name": "TANAHSERIBU"}, "KPD729": {"lat": 2.225043, "lon": 98.193805, "name": "BOSARAGIH"}, "KTN038": {"lat": 3.348577, "lon": 97.869344, "name": "LAWESUMUR"}, "LBP007": {"lat": 3.613893, "lon": 98.576504, "name": "ORDEBARU"}, "LBP020": {"lat": 3.127222, "lon": 98.686111, "name": "GUNUNGMERIAH"}, "LBP021": {"lat": 3.406666, "lon": 98.934444, "name": "DESAPULAUTAGOR"}, "LBP110": {"lat": 3.660555, "lon": 98.807222, "name": "DESASUGIHARJO"}, "LBP119": {"lat": 3.487222, "lon": 98.597222, "name": "SEKOLAHMETHODIS"}, "LBP124": {"lat": 3.308611, "lon": 98.652501, "name": "PANENBIRUBIRU"}, "LBP183": {"lat": 3.495021, "lon": 98.689691, "name": "DELITUABARAT"}, "LBP232": {"lat": 3.489511, "lon": 98.540031, "name": "LAUBAKERI"}, "LBP269": {"lat": 3.564166, "lon": 98.794166, "name": "KAVELERI"}, "LBP323": {"lat": 3.529411, "lon": 98.807331, "name": "MCKIMMORAWA"}, "LBP447": {"lat": 3.300851, "lon": 98.642671, "name": "PANUKIREN"}, "LBP450": {"lat": 3.558055, "lon": 98.867501, "name": "TJGARPUS1"}, "LBP473": {"lat": 3.565001, "lon": 98.865555, "name": "PAGARMERBAU"}, "LBP497": {"lat": 3.64, "lon": 98.759166, "name": "KOLAM"}, "LBP670": {"lat": 3.430581, "lon": 98.892151, "name": "KAMPUNGAGAM"}, "LBP858": {"lat": 3.264166, "lon": 99.040555, "name": "SIBARAU"}, "LBP860": {"lat": 3.21848, "lon": 98.771537, "name": "TAREAN"}, "MDN011": {"lat": 3.560814, "lon": 98.603814, "name": "SRIGUNTING"}, "MDN012": {"lat": 3.607321, "lon": 98.688621, "name": "NEWPELITAIV"}, "MDN016": {"lat": 3.594071, "lon": 98.668077, "name": "SEKIP"}, "MDN046": {"lat": 3.696388, "lon": 98.673055, "name": "MARTUBUNG2"}, "MDN052": {"lat": 3.574269, "lon": 98.647592, "name": "SEIBATUGINGGING2"}, "MDN098": {"lat": 3.555085, "lon": 98.661612, "name": "USU"}, "MDN141": {"lat": 3.700515, "lon": 98.6392, "name": "TERJUN"}, "MDN151": {"lat": 3.621106, "lon": 98.707116, "name": "BHAYANGKARA"}, "MDN162": {"lat": 3.546823, "lon": 98.649721, "name": "BUNGAMAWAR"}, "MDN191": {"lat": 3.6146, "lon": 98.721589, "name": "MEDANTEMBUNG"}, "MDN202": {"lat": 3.579916, "lon": 98.616004, "name": "INDUSTRISBELAWAN"}, "MDN227": {"lat": 3.546467, "lon": 98.61807, "name": "JLNRAHARJA"}, "MDN238": {"lat": 3.593266, "lon": 98.692807, "name": "JLTJMORAWA"}, "MDN276": {"lat": 3.545806, "lon": 98.695551, "name": "GGLAMBAU"}, "MDN362": {"lat": 3.628888, "lon": 98.695001, "name": "PANCING3"}, "MDN392": {"lat": 3.589565, "lon": 98.606848, "name": "JLHMYAKUB"}, "MDN549": {"lat": 3.596694, "lon": 98.668679, "name": "TUALANG4"}, "MDN579": {"lat": 3.511992, "lon": 98.629742, "name": "KEMIRI"}, "MDN639": {"lat": 3.605811, "lon": 98.627722, "name": "GAPERTAUJUNG2"}, "MDN654": {"lat": 3.626666, "lon": 98.667777, "name": "JLPERTAHANANBRAYAN"}, "MDN657": {"lat": 3.546666, "lon": 98.783611, "name": "DESABUNTUBEDIMBAR"}, "MDN704": {"lat": 3.576036, "lon": 98.682994, "name": "RSMARTHAFRISKAMAIMUN"}, "MDN790": {"lat": 3.555682, "lon": 98.687807, "name": "KAMPUNGBARU3"}, "MDN826": {"lat": 3.591388, "lon": 98.614444, "name": "MACRO"}, "MDN846": {"lat": 3.539166, "lon": 98.698888, "name": "TRITURAMARINDAL"}, "MDN872": {"lat": 3.558637, "lon": 98.651503, "name": "PEMBANGUNANUSU"}, "MDN955": {"lat": 3.598728, "lon": 98.618992, "name": "GAPERTA"}, "MDN961": {"lat": 3.503995, "lon": 98.633432, "name": "SIMALINGKARRAYA"}, "MDN974": {"lat": 3.606661, "lon": 98.68446, "name": "PELITA4"}, "MDN994": {"lat": 3.568551, "lon": 98.70564, "name": "MENTENGRAYA3"}, "MDX115": {"lat": 3.590277, "lon": 98.642501, "name": "KOMPLEKPERTOKOANTOMANGELOK"}, "MDX128": {"lat": 3.780833, "lon": 98.694166, "name": "BRIBELAWAN"}, "MDX129": {"lat": 3.606388, "lon": 98.642501, "name": "SIMPZIPUR"}, "MDX158": {"lat": 3.585833, "lon": 98.626666, "name": "GAGAKHITAM"}, "MDX241": {"lat": 3.601388, "lon": 98.647222, "name": "ESCAPESPA"}, "MDX259": {"lat": 3.684444, "lon": 98.635833, "name": "PERUMTER"}, "MDX273": {"lat": 3.514166, "lon": 98.643888, "name": "ROYALGOLF"}, "STB079": {"lat": 4.017355, "lon": 98.287491, "name": "PANGKALANBRANDAN"}, "STB594": {"lat": 3.751387, "lon": 98.453218, "name": "STABAT4"}, "TBT397": {"lat": 3.330277, "lon": 99.163888, "name": "KASAU"}, "TBT400": {"lat": 3.322777, "lon": 99.145277, "name": "SEIKELEMBAH"}};
+const OPEN_MAP_DATA      = [{"ticket_id": "TBT40020260323", "site_id": "TBT400", "nop": "PEMATANG SIANTAR", "ticket_status": "ReOpen", "open_date": "2026-03-23", "aging": 46, "pay_open": 1227.0, "pay_latest": 846.0, "delta": -381.0}, {"ticket_id": "MDN65720260427", "site_id": "MDN657", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-27", "aging": 10, "pay_open": 1253.0, "pay_latest": 1155.0, "delta": -98.0}, {"ticket_id": "MDN95520260427", "site_id": "MDN955", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-27", "aging": 10, "pay_open": 1437.0, "pay_latest": 1392.0, "delta": -45.0}, {"ticket_id": "MDX24120260427", "site_id": "MDX241", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-27", "aging": 10, "pay_open": 833.0, "pay_latest": 755.0, "delta": -78.0}, {"ticket_id": "MDN79020260427", "site_id": "MDN790", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-27", "aging": 10, "pay_open": 1627.0, "pay_latest": 1548.0, "delta": -79.0}, {"ticket_id": "MDN01120260427", "site_id": "MDN011", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-27", "aging": 10, "pay_open": 1775.0, "pay_latest": 1773.0, "delta": -2.0}, {"ticket_id": "MDN87220260427", "site_id": "MDN872", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-27", "aging": 10, "pay_open": 2756.0, "pay_latest": 2342.0, "delta": -414.0}, {"ticket_id": "LBP67020260427", "site_id": "LBP670", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-27", "aging": 10, "pay_open": 469.0, "pay_latest": 467.0, "delta": -2.0}, {"ticket_id": "MDX12820260428", "site_id": "MDX128", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-04-28", "aging": 9, "pay_open": 728.0, "pay_latest": 705.0, "delta": -23.0}, {"ticket_id": "MDN97420260428", "site_id": "MDN974", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-28", "aging": 9, "pay_open": 1394.0, "pay_latest": 1364.0, "delta": -30.0}, {"ticket_id": "STB59420260428", "site_id": "STB594", "nop": "BINJAI", "ticket_status": "NeedClose", "open_date": "2026-04-28", "aging": 9, "pay_open": 1563.0, "pay_latest": 1407.0, "delta": -156.0}, {"ticket_id": "MDN54920260430", "site_id": "MDN549", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-30", "aging": 7, "pay_open": 1101.0, "pay_latest": 1088.0, "delta": -13.0}, {"ticket_id": "LBP45020260430", "site_id": "LBP450", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-04-30", "aging": 7, "pay_open": 1482.0, "pay_latest": 1402.0, "delta": -80.0}, {"ticket_id": "MDN82620260504", "site_id": "MDN826", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-05-04", "aging": 3, "pay_open": 1242.0, "pay_latest": 1202.0, "delta": -40.0}, {"ticket_id": "LBP49720260504", "site_id": "LBP497", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-05-04", "aging": 3, "pay_open": 1118.0, "pay_latest": 1050.0, "delta": -68.0}, {"ticket_id": "MDN96120260504", "site_id": "MDN961", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-05-04", "aging": 3, "pay_open": 1069.0, "pay_latest": 1055.0, "delta": -14.0}, {"ticket_id": "LBP44720260504", "site_id": "LBP447", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-05-04", "aging": 3, "pay_open": 948.0, "pay_latest": 649.0, "delta": -299.0}, {"ticket_id": "LBP12420260504", "site_id": "LBP124", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-05-04", "aging": 3, "pay_open": 1332.0, "pay_latest": 1141.0, "delta": -191.0}, {"ticket_id": "LBP11020260504", "site_id": "LBP110", "nop": "MEDAN", "ticket_status": "NeedClose", "open_date": "2026-05-04", "aging": 3, "pay_open": 2103.0, "pay_latest": 1980.0, "delta": -123.0}, {"ticket_id": "MDN84620260507", "site_id": "MDN846", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1377.0, "delta": null}, {"ticket_id": "MDN09820260507", "site_id": "MDN098", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1657.0, "delta": null}, {"ticket_id": "STB07920260507", "site_id": "STB079", "nop": "BINJAI", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1852.0, "delta": null}, {"ticket_id": "MDN16220260507", "site_id": "MDN162", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1252.0, "delta": null}, {"ticket_id": "MDN14120260507", "site_id": "MDN141", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 840.0, "delta": null}, {"ticket_id": "MDX11520260507", "site_id": "MDX115", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1090.0, "delta": null}, {"ticket_id": "LBP26920260507", "site_id": "LBP269", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1413.0, "delta": null}, {"ticket_id": "MDX27320260507", "site_id": "MDX273", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 110.0, "delta": null}, {"ticket_id": "MDN70420260507", "site_id": "MDN704", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 383.0, "delta": null}, {"ticket_id": "LBP02120260507", "site_id": "LBP021", "nop": "PEMATANG SIANTAR", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 689.0, "delta": null}, {"ticket_id": "KPD72920260507", "site_id": "KPD729", "nop": "PADANG SIDEMPUAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 918.0, "delta": null}, {"ticket_id": "TBT39720260507", "site_id": "TBT397", "nop": "PEMATANG SIANTAR", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 854.0, "delta": null}, {"ticket_id": "MDN36220260507", "site_id": "MDN362", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1558.0, "delta": null}, {"ticket_id": "BJI23220260507", "site_id": "BJI232", "nop": "BINJAI", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1309.0, "delta": null}, {"ticket_id": "MDN15120260507", "site_id": "MDN151", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 2196.0, "delta": null}, {"ticket_id": "LBP11920260507", "site_id": "LBP119", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1367.0, "delta": null}, {"ticket_id": "MDN27620260507", "site_id": "MDN276", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1251.0, "delta": null}, {"ticket_id": "MDN01220260507", "site_id": "MDN012", "nop": "MEDAN", "ticket_status": "Open", "open_date": "2026-05-07", "aging": 0, "pay_open": 0.0, "pay_latest": 1690.0, "delta": null}];
+const KPI_DATA           = {"TBT40020260323": {"ref_date": "2026-03-23", "data": [{"day": "2026-03-16", "tnl": 0.0, "packet_loss": 0.0, "payload": 875.0, "fege": 277.0, "fege_above_90_count": 5}, {"day": "2026-03-17", "tnl": 0.0, "packet_loss": 0.0, "payload": 929.0, "fege": 308.0, "fege_above_90_count": 2}, {"day": "2026-03-18", "tnl": 0.0, "packet_loss": 0.0, "payload": 843.0, "fege": 301.0, "fege_above_90_count": 2}, {"day": "2026-03-19", "tnl": 0.0, "packet_loss": 0.0, "payload": 1155.0, "fege": 293.0, "fege_above_90_count": 7}, {"day": "2026-03-20", "tnl": 0.0, "packet_loss": 0.0, "payload": 1215.0, "fege": 380.0, "fege_above_90_count": 1}, {"day": "2026-03-21", "tnl": 0.0, "packet_loss": null, "payload": 1300.0, "fege": 374.0, "fege_above_90_count": 2}, {"day": "2026-03-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 1329.0, "fege": 309.0, "fege_above_90_count": 6}, {"day": "2026-03-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 1227.0, "fege": 296.0, "fege_above_90_count": 8}, {"day": "2026-03-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 1172.0, "fege": 331.0, "fege_above_90_count": 1}, {"day": "2026-03-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 1099.0, "fege": 294.0, "fege_above_90_count": 4}, {"day": "2026-03-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 1030.0, "fege": 293.0, "fege_above_90_count": 6}, {"day": "2026-03-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 813.0, "fege": 282.0, "fege_above_90_count": 4}]}, "MDN65720260427": {"ref_date": "2026-04-27", "data": [{"day": "2026-04-20", "tnl": 2793.0, "packet_loss": null, "payload": 1266.0, "fege": 326.0, "fege_above_90_count": 5}, {"day": "2026-04-21", "tnl": 0.0, "packet_loss": 0.0, "payload": 1248.0, "fege": 304.0, "fege_above_90_count": 8}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 1309.0, "fege": 364.0, "fege_above_90_count": 2}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 1266.0, "fege": 330.0, "fege_above_90_count": 7}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 1306.0, "fege": 422.0, "fege_above_90_count": 1}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 1446.0, "fege": 340.0, "fege_above_90_count": 2}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 1347.0, "fege": 328.0, "fege_above_90_count": 8}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1253.0, "fege": 345.0, "fege_above_90_count": 2}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1204.0, "fege": 368.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1240.0, "fege": 436.0, "fege_above_90_count": 1}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1365.0, "fege": 324.0, "fege_above_90_count": 9}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1361.0, "fege": 345.0, "fege_above_90_count": 1}, {"day": "2026-05-02", "tnl": 6030.0, "packet_loss": 1.0, "payload": 714.0, "fege": 330.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 6709.0, "packet_loss": 1.0, "payload": 874.0, "fege": 101.0, "fege_above_90_count": 24}, {"day": "2026-05-04", "tnl": 7282.0, "packet_loss": 11.0, "payload": 833.0, "fege": 101.0, "fege_above_90_count": 24}]}, "MDN95520260427": {"ref_date": "2026-04-27", "data": [{"day": "2026-04-20", "tnl": 0.0, "packet_loss": null, "payload": 1402.0, "fege": 506.0, "fege_above_90_count": 1}, {"day": "2026-04-21", "tnl": 0.0, "packet_loss": 0.0, "payload": 1431.0, "fege": 414.0, "fege_above_90_count": 5}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 1625.0, "fege": 456.0, "fege_above_90_count": 8}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 1493.0, "fege": 450.0, "fege_above_90_count": 4}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 1410.0, "fege": 439.0, "fege_above_90_count": 3}, {"day": "2026-04-25", "tnl": 339.0, "packet_loss": 0.0, "payload": 1658.0, "fege": 458.0, "fege_above_90_count": 5}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 1531.0, "fege": 421.0, "fege_above_90_count": 8}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1437.0, "fege": 419.0, "fege_above_90_count": 3}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1458.0, "fege": 432.0, "fege_above_90_count": 6}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1484.0, "fege": 458.0, "fege_above_90_count": 2}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1417.0, "fege": 485.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1408.0, "fege": 448.0, "fege_above_90_count": 4}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1547.0, "fege": 468.0, "fege_above_90_count": 3}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1564.0, "fege": 505.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1410.0, "fege": 413.0, "fege_above_90_count": 5}]}, "MDX24120260427": {"ref_date": "2026-04-27", "data": [{"day": "2026-04-20", "tnl": 0.0, "packet_loss": null, "payload": 768.0, "fege": 385.0, "fege_above_90_count": 1}, {"day": "2026-04-21", "tnl": 0.0, "packet_loss": 0.0, "payload": 871.0, "fege": 284.0, "fege_above_90_count": 6}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 880.0, "fege": 283.0, "fege_above_90_count": 9}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 830.0, "fege": 364.0, "fege_above_90_count": 2}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 818.0, "fege": 309.0, "fege_above_90_count": 2}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 800.0, "fege": 286.0, "fege_above_90_count": 3}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 843.0, "fege": 261.0, "fege_above_90_count": 7}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 833.0, "fege": 326.0, "fege_above_90_count": 1}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 804.0, "fege": 346.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 842.0, "fege": 350.0, "fege_above_90_count": 3}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 830.0, "fege": 349.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 783.0, "fege": 285.0, "fege_above_90_count": 6}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 802.0, "fege": 290.0, "fege_above_90_count": 3}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 887.0, "fege": 356.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 782.0, "fege": 286.0, "fege_above_90_count": 3}]}, "MDN79020260427": {"ref_date": "2026-04-27", "data": [{"day": "2026-04-20", "tnl": 0.0, "packet_loss": null, "payload": 1623.0, "fege": 455.0, "fege_above_90_count": 6}, {"day": "2026-04-21", "tnl": 0.0, "packet_loss": 0.0, "payload": 1539.0, "fege": 525.0, "fege_above_90_count": 2}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 1691.0, "fege": 472.0, "fege_above_90_count": 4}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 1648.0, "fege": 534.0, "fege_above_90_count": 2}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 1517.0, "fege": 538.0, "fege_above_90_count": 2}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 1337.0, "fege": 421.0, "fege_above_90_count": 5}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 1236.0, "fege": 374.0, "fege_above_90_count": 14}, {"day": "2026-04-27", "tnl": 466.0, "packet_loss": 7.0, "payload": 1627.0, "fege": 476.0, "fege_above_90_count": 5}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1662.0, "fege": 461.0, "fege_above_90_count": 9}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1586.0, "fege": 513.0, "fege_above_90_count": 3}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1676.0, "fege": 496.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1212.0, "fege": 443.0, "fege_above_90_count": 5}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1198.0, "fege": 405.0, "fege_above_90_count": 4}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1170.0, "fege": 431.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1571.0, "fege": 479.0, "fege_above_90_count": 6}]}, "MDN01120260427": {"ref_date": "2026-04-27", "data": [{"day": "2026-04-20", "tnl": 0.0, "packet_loss": null, "payload": 1654.0, "fege": 464.0, "fege_above_90_count": 2}, {"day": "2026-04-21", "tnl": 0.0, "packet_loss": null, "payload": 1687.0, "fege": 433.0, "fege_above_90_count": 5}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": null, "payload": 1765.0, "fege": 439.0, "fege_above_90_count": 6}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": null, "payload": 1735.0, "fege": 459.0, "fege_above_90_count": 3}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": null, "payload": 1716.0, "fege": 451.0, "fege_above_90_count": 5}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": null, "payload": 1994.0, "fege": 543.0, "fege_above_90_count": 1}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": null, "payload": 2085.0, "fege": 430.0, "fege_above_90_count": 8}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": null, "payload": 1775.0, "fege": 535.0, "fege_above_90_count": 2}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": null, "payload": 1774.0, "fege": 429.0, "fege_above_90_count": 6}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": null, "payload": 1724.0, "fege": 428.0, "fege_above_90_count": 4}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1722.0, "fege": 461.0, "fege_above_90_count": 5}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 2032.0, "fege": 441.0, "fege_above_90_count": 8}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1983.0, "fege": 455.0, "fege_above_90_count": 8}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 2156.0, "fege": 444.0, "fege_above_90_count": 11}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1685.0, "fege": 422.0, "fege_above_90_count": 5}]}, "MDN87220260427": {"ref_date": "2026-04-27", "data": [{"day": "2026-04-20", "tnl": 0.0, "packet_loss": null, "payload": 2776.0, "fege": 676.0, "fege_above_90_count": 4}, {"day": "2026-04-21", "tnl": 0.0, "packet_loss": 0.0, "payload": 2895.0, "fege": 600.0, "fege_above_90_count": 10}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 3001.0, "fege": 602.0, "fege_above_90_count": 9}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 2932.0, "fege": 697.0, "fege_above_90_count": 2}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 2897.0, "fege": 608.0, "fege_above_90_count": 5}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 2733.0, "fege": 604.0, "fege_above_90_count": 5}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 2792.0, "fege": 588.0, "fege_above_90_count": 10}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 2756.0, "fege": 670.0, "fege_above_90_count": 2}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 2727.0, "fege": 607.0, "fege_above_90_count": 6}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 2756.0, "fege": 599.0, "fege_above_90_count": 6}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 2623.0, "fege": 616.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 2553.0, "fege": 622.0, "fege_above_90_count": 6}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 2405.0, "fege": 612.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 2613.0, "fege": 623.0, "fege_above_90_count": 5}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 2435.0, "fege": 589.0, "fege_above_90_count": 10}]}, "LBP67020260427": {"ref_date": "2026-04-27", "data": [{"day": "2026-04-20", "tnl": 0.0, "packet_loss": null, "payload": 449.0, "fege": 176.0, "fege_above_90_count": 4}, {"day": "2026-04-21", "tnl": 0.0, "packet_loss": 0.0, "payload": 490.0, "fege": 209.0, "fege_above_90_count": 3}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 478.0, "fege": 194.0, "fege_above_90_count": 1}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 505.0, "fege": 207.0, "fege_above_90_count": 3}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 477.0, "fege": 181.0, "fege_above_90_count": 7}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 427.0, "fege": 211.0, "fege_above_90_count": 1}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 459.0, "fege": 169.0, "fege_above_90_count": 7}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 469.0, "fege": 205.0, "fege_above_90_count": 2}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 475.0, "fege": 211.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 464.0, "fege": 193.0, "fege_above_90_count": 3}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 472.0, "fege": 204.0, "fege_above_90_count": 2}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 397.0, "fege": 166.0, "fege_above_90_count": 5}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 365.0, "fege": 189.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 448.0, "fege": 206.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 424.0, "fege": 167.0, "fege_above_90_count": 6}]}, "MDX12820260428": {"ref_date": "2026-04-28", "data": [{"day": "2026-04-21", "tnl": 179.0, "packet_loss": 0.0, "payload": 702.0, "fege": 212.0, "fege_above_90_count": 16}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 740.0, "fege": 213.0, "fege_above_90_count": 20}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 759.0, "fege": 212.0, "fege_above_90_count": 14}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 671.0, "fege": 212.0, "fege_above_90_count": 17}, {"day": "2026-04-25", "tnl": 150.0, "packet_loss": 0.0, "payload": 603.0, "fege": 211.0, "fege_above_90_count": 14}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 430.0, "fege": 211.0, "fege_above_90_count": 10}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 774.0, "fege": 214.0, "fege_above_90_count": 13}, {"day": "2026-04-28", "tnl": 10.0, "packet_loss": 0.0, "payload": 728.0, "fege": 212.0, "fege_above_90_count": 16}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 728.0, "fege": 212.0, "fege_above_90_count": 16}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 742.0, "fege": 212.0, "fege_above_90_count": 15}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 373.0, "fege": 210.0, "fege_above_90_count": 10}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 672.0, "fege": 210.0, "fege_above_90_count": 13}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 456.0, "fege": 210.0, "fege_above_90_count": 7}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 710.0, "fege": 210.0, "fege_above_90_count": 13}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 746.0, "fege": 210.0, "fege_above_90_count": 20}]}, "MDN97420260428": {"ref_date": "2026-04-28", "data": [{"day": "2026-04-21", "tnl": 0.0, "packet_loss": 0.0, "payload": 1508.0, "fege": 492.0, "fege_above_90_count": 2}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": 0.0, "payload": 1699.0, "fege": 527.0, "fege_above_90_count": 4}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 1582.0, "fege": 514.0, "fege_above_90_count": 6}, {"day": "2026-04-24", "tnl": 105.0, "packet_loss": 0.0, "payload": 1502.0, "fege": 512.0, "fege_above_90_count": 4}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 1535.0, "fege": 513.0, "fege_above_90_count": 1}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 1614.0, "fege": 500.0, "fege_above_90_count": 3}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1387.0, "fege": 423.0, "fege_above_90_count": 10}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1394.0, "fege": 414.0, "fege_above_90_count": 11}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1465.0, "fege": 575.0, "fege_above_90_count": 2}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1433.0, "fege": 472.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1519.0, "fege": 514.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1449.0, "fege": 452.0, "fege_above_90_count": 8}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1573.0, "fege": 540.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1383.0, "fege": 458.0, "fege_above_90_count": 4}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1358.0, "fege": 453.0, "fege_above_90_count": 7}]}, "STB59420260428": {"ref_date": "2026-04-28", "data": [{"day": "2026-04-21", "tnl": 0.0, "packet_loss": null, "payload": 1541.0, "fege": 414.0, "fege_above_90_count": 1}, {"day": "2026-04-22", "tnl": 0.0, "packet_loss": null, "payload": 1526.0, "fege": 395.0, "fege_above_90_count": 2}, {"day": "2026-04-23", "tnl": 0.0, "packet_loss": null, "payload": 1560.0, "fege": 407.0, "fege_above_90_count": 2}, {"day": "2026-04-24", "tnl": 45.0, "packet_loss": null, "payload": 1586.0, "fege": 389.0, "fege_above_90_count": 7}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": null, "payload": 1548.0, "fege": 373.0, "fege_above_90_count": 9}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": null, "payload": 1459.0, "fege": 407.0, "fege_above_90_count": 2}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": null, "payload": 1483.0, "fege": 362.0, "fege_above_90_count": 8}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": null, "payload": 1563.0, "fege": 431.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": null, "payload": 1548.0, "fege": 397.0, "fege_above_90_count": 3}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1583.0, "fege": 383.0, "fege_above_90_count": 9}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1424.0, "fege": 379.0, "fege_above_90_count": 7}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1528.0, "fege": 426.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1428.0, "fege": 360.0, "fege_above_90_count": 8}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1529.0, "fege": 370.0, "fege_above_90_count": 10}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1540.0, "fege": 369.0, "fege_above_90_count": 10}]}, "MDN54920260430": {"ref_date": "2026-04-30", "data": [{"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 1067.0, "fege": 541.0, "fege_above_90_count": 2}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": null, "payload": 1179.0, "fege": 527.0, "fege_above_90_count": 5}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": null, "payload": 1156.0, "fege": 550.0, "fege_above_90_count": 1}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": null, "payload": 958.0, "fege": 485.0, "fege_above_90_count": 5}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": null, "payload": 1144.0, "fege": 459.0, "fege_above_90_count": 11}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": null, "payload": 1091.0, "fege": 565.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": null, "payload": 1065.0, "fege": 452.0, "fege_above_90_count": 8}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1101.0, "fege": 499.0, "fege_above_90_count": 6}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 983.0, "fege": 502.0, "fege_above_90_count": 4}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1125.0, "fege": 515.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 972.0, "fege": 527.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1073.0, "fege": 483.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1036.0, "fege": 523.0, "fege_above_90_count": 3}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1088.0, "fege": 466.0, "fege_above_90_count": 8}]}, "LBP45020260430": {"ref_date": "2026-04-30", "data": [{"day": "2026-04-23", "tnl": 0.0, "packet_loss": 0.0, "payload": 1501.0, "fege": 420.0, "fege_above_90_count": 5}, {"day": "2026-04-24", "tnl": 0.0, "packet_loss": 0.0, "payload": 1433.0, "fege": 376.0, "fege_above_90_count": 10}, {"day": "2026-04-25", "tnl": 0.0, "packet_loss": 0.0, "payload": 1413.0, "fege": 425.0, "fege_above_90_count": 2}, {"day": "2026-04-26", "tnl": 0.0, "packet_loss": 0.0, "payload": 1112.0, "fege": 393.0, "fege_above_90_count": 5}, {"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1493.0, "fege": 417.0, "fege_above_90_count": 3}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1481.0, "fege": 398.0, "fege_above_90_count": 6}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1481.0, "fege": 360.0, "fege_above_90_count": 13}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1482.0, "fege": 417.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1235.0, "fege": 465.0, "fege_above_90_count": 1}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1433.0, "fege": 370.0, "fege_above_90_count": 8}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1204.0, "fege": 392.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1465.0, "fege": 416.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1471.0, "fege": 394.0, "fege_above_90_count": 1}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1402.0, "fege": 387.0, "fege_above_90_count": 5}]}, "MDN82620260504": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1241.0, "fege": 437.0, "fege_above_90_count": 1}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1237.0, "fege": 400.0, "fege_above_90_count": 3}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1234.0, "fege": 417.0, "fege_above_90_count": 2}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1197.0, "fege": 407.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1280.0, "fege": 442.0, "fege_above_90_count": 1}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1274.0, "fege": 381.0, "fege_above_90_count": 10}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1370.0, "fege": 382.0, "fege_above_90_count": 11}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1242.0, "fege": 409.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1204.0, "fege": 431.0, "fege_above_90_count": 1}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1202.0, "fege": 402.0, "fege_above_90_count": 5}]}, "LBP49720260504": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1026.0, "fege": 336.0, "fege_above_90_count": 6}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1029.0, "fege": 337.0, "fege_above_90_count": 6}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1116.0, "fege": 403.0, "fege_above_90_count": 1}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1054.0, "fege": 328.0, "fege_above_90_count": 6}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1263.0, "fege": 381.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1175.0, "fege": 346.0, "fege_above_90_count": 6}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1398.0, "fege": 317.0, "fege_above_90_count": 13}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1118.0, "fege": 332.0, "fege_above_90_count": 4}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1072.0, "fege": 305.0, "fege_above_90_count": 7}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1050.0, "fege": 342.0, "fege_above_90_count": 2}]}, "MDN96120260504": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1071.0, "fege": 367.0, "fege_above_90_count": 3}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1054.0, "fege": 453.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1023.0, "fege": 453.0, "fege_above_90_count": 1}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1050.0, "fege": 378.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1186.0, "fege": 436.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 2940.0, "packet_loss": 0.0, "payload": 1118.0, "fege": 395.0, "fege_above_90_count": 4}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1258.0, "fege": 361.0, "fege_above_90_count": 10}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1069.0, "fege": 349.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 987.0, "fege": 377.0, "fege_above_90_count": 4}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1055.0, "fege": 388.0, "fege_above_90_count": 3}]}, "LBP44720260504": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1124.0, "fege": 364.0, "fege_above_90_count": 1}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1121.0, "fege": 326.0, "fege_above_90_count": 5}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 998.0, "fege": 381.0, "fege_above_90_count": 1}, {"day": "2026-04-30", "tnl": 2232.0, "packet_loss": 0.0, "payload": 1011.0, "fege": 334.0, "fege_above_90_count": 5}, {"day": "2026-05-01", "tnl": 826.0, "packet_loss": 0.0, "payload": 1261.0, "fege": 375.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 2233.0, "packet_loss": 0.0, "payload": 1146.0, "fege": 444.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1244.0, "fege": 319.0, "fege_above_90_count": 8}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 948.0, "fege": 344.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 1632.0, "packet_loss": 0.0, "payload": 991.0, "fege": 335.0, "fege_above_90_count": 5}, {"day": "2026-05-06", "tnl": 4869.0, "packet_loss": 0.0, "payload": 649.0, "fege": 329.0, "fege_above_90_count": 4}]}, "LBP12420260504": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": null, "payload": 1543.0, "fege": 389.0, "fege_above_90_count": 3}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": null, "payload": 1565.0, "fege": 385.0, "fege_above_90_count": 4}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": null, "payload": 1558.0, "fege": 340.0, "fege_above_90_count": 10}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1560.0, "fege": 335.0, "fege_above_90_count": 11}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1603.0, "fege": 327.0, "fege_above_90_count": 14}, {"day": "2026-05-02", "tnl": 20690.0, "packet_loss": null, "payload": 1476.0, "fege": 332.0, "fege_above_90_count": 9}, {"day": "2026-05-03", "tnl": 20384.0, "packet_loss": null, "payload": 1573.0, "fege": 317.0, "fege_above_90_count": 17}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1332.0, "fege": 345.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 15822.0, "packet_loss": null, "payload": 1491.0, "fege": 421.0, "fege_above_90_count": 3}, {"day": "2026-05-06", "tnl": 21073.0, "packet_loss": null, "payload": 1141.0, "fege": 384.0, "fege_above_90_count": 3}]}, "LBP11020260504": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": null, "payload": 2050.0, "fege": 506.0, "fege_above_90_count": 4}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": null, "payload": 1966.0, "fege": 534.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": null, "payload": 1917.0, "fege": 458.0, "fege_above_90_count": 6}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1937.0, "fege": 508.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 2053.0, "fege": 479.0, "fege_above_90_count": 4}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1956.0, "fege": 499.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 2325.0, "fege": 458.0, "fege_above_90_count": 12}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 2103.0, "fege": 511.0, "fege_above_90_count": 4}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1995.0, "fege": 508.0, "fege_above_90_count": 3}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1980.0, "fege": 486.0, "fege_above_90_count": 4}]}, "MDN84620260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1413.0, "fege": 446.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1300.0, "fege": 422.0, "fege_above_90_count": 7}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1357.0, "fege": 441.0, "fege_above_90_count": 7}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1415.0, "fege": 413.0, "fege_above_90_count": 5}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1344.0, "fege": 397.0, "fege_above_90_count": 5}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1267.0, "fege": 426.0, "fege_above_90_count": 2}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1377.0, "fege": 479.0, "fege_above_90_count": 1}]}, "MDN09820260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1540.0, "fege": 406.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1607.0, "fege": 410.0, "fege_above_90_count": 4}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1629.0, "fege": 382.0, "fege_above_90_count": 12}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1636.0, "fege": 442.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1495.0, "fege": 447.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1578.0, "fege": 406.0, "fege_above_90_count": 5}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1657.0, "fege": 400.0, "fege_above_90_count": 9}]}, "STB07920260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1907.0, "fege": 399.0, "fege_above_90_count": 9}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1782.0, "fege": 384.0, "fege_above_90_count": 5}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1829.0, "fege": 370.0, "fege_above_90_count": 14}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1878.0, "fege": 435.0, "fege_above_90_count": 3}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 2043.0, "fege": 434.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1862.0, "fege": 406.0, "fege_above_90_count": 4}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1852.0, "fege": 371.0, "fege_above_90_count": 9}]}, "MDN16220260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1281.0, "fege": 392.0, "fege_above_90_count": 5}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1331.0, "fege": 421.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1232.0, "fege": 427.0, "fege_above_90_count": 4}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1342.0, "fege": 390.0, "fege_above_90_count": 5}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1169.0, "fege": 382.0, "fege_above_90_count": 5}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1220.0, "fege": 435.0, "fege_above_90_count": 2}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1252.0, "fege": 416.0, "fege_above_90_count": 3}]}, "MDN14120260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 772.0, "fege": 352.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 980.0, "fege": 351.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1014.0, "fege": 330.0, "fege_above_90_count": 4}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1007.0, "fege": 367.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 818.0, "fege": 294.0, "fege_above_90_count": 7}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 913.0, "fege": 413.0, "fege_above_90_count": 1}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 840.0, "fege": 300.0, "fege_above_90_count": 6}]}, "MDX11520260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 971.0, "fege": 353.0, "fege_above_90_count": 6}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 872.0, "fege": 408.0, "fege_above_90_count": 1}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 985.0, "fege": 368.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 969.0, "fege": 388.0, "fege_above_90_count": 3}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 982.0, "fege": 349.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1063.0, "fege": 342.0, "fege_above_90_count": 11}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1090.0, "fege": 381.0, "fege_above_90_count": 2}]}, "LBP26920260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1406.0, "fege": 342.0, "fege_above_90_count": 8}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1295.0, "fege": 366.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 7.0, "packet_loss": 35.0, "payload": 1152.0, "fege": 386.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1425.0, "fege": 356.0, "fege_above_90_count": 5}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1372.0, "fege": 348.0, "fege_above_90_count": 5}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1349.0, "fege": 306.0, "fege_above_90_count": 10}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1413.0, "fege": 317.0, "fege_above_90_count": 15}]}, "MDX27320260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 64.0, "fege": 107.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 134.0, "fege": 126.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 1.0, "packet_loss": 4.0, "payload": 148.0, "fege": 127.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 5.0, "packet_loss": 4.0, "payload": 125.0, "fege": 142.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 98.0, "fege": 128.0, "fege_above_90_count": 1}, {"day": "2026-05-05", "tnl": 1.0, "packet_loss": 3.0, "payload": 113.0, "fege": 27.0, "fege_above_90_count": 24}, {"day": "2026-05-06", "tnl": 15.0, "packet_loss": 3.0, "payload": 110.0, "fege": 27.0, "fege_above_90_count": 24}]}, "MDN70420260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 394.0, "fege": 174.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 254.0, "fege": 190.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 273.0, "fege": 190.0, "fege_above_90_count": 3}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 218.0, "fege": 167.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 360.0, "fege": 198.0, "fege_above_90_count": 1}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 372.0, "fege": 183.0, "fege_above_90_count": 2}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 383.0, "fege": 152.0, "fege_above_90_count": 8}]}, "LBP02120260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 694.0, "fege": 339.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 763.0, "fege": 370.0, "fege_above_90_count": 1}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 644.0, "fege": 356.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 819.0, "fege": 332.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 695.0, "fege": 294.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 720.0, "fege": 316.0, "fege_above_90_count": 1}, {"day": "2026-05-06", "tnl": 1604.0, "packet_loss": 1.0, "payload": 689.0, "fege": 224.0, "fege_above_90_count": 9}]}, "KPD72920260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1203.0, "fege": 235.0, "fege_above_90_count": 2}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 24.0, "payload": 1119.0, "fege": 227.0, "fege_above_90_count": 1}, {"day": "2026-05-02", "tnl": 7.0, "packet_loss": 0.0, "payload": 1497.0, "fege": 247.0, "fege_above_90_count": 4}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 22.0, "payload": 1322.0, "fege": 233.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1333.0, "fege": 231.0, "fege_above_90_count": 3}, {"day": "2026-05-05", "tnl": 69.0, "packet_loss": 8.0, "payload": 1081.0, "fege": 188.0, "fege_above_90_count": 1}, {"day": "2026-05-06", "tnl": 1.0, "packet_loss": 9.0, "payload": 918.0, "fege": 96.0, "fege_above_90_count": 18}]}, "TBT39720260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 923.0, "fege": 413.0, "fege_above_90_count": 2}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 823.0, "fege": 430.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 971.0, "fege": 429.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 851.0, "fege": 389.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 904.0, "fege": 313.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 898.0, "fege": 329.0, "fege_above_90_count": 5}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 854.0, "fege": 280.0, "fege_above_90_count": 8}]}, "MDN36220260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1615.0, "fege": 371.0, "fege_above_90_count": 5}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1506.0, "fege": 405.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1545.0, "fege": 381.0, "fege_above_90_count": 3}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1527.0, "fege": 386.0, "fege_above_90_count": 4}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1523.0, "fege": 374.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1516.0, "fege": 395.0, "fege_above_90_count": 1}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1558.0, "fege": 379.0, "fege_above_90_count": 10}]}, "BJI23220260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1373.0, "fege": 443.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1652.0, "fege": 518.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1574.0, "fege": 538.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1677.0, "fege": 503.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1362.0, "fege": 489.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1329.0, "fege": 424.0, "fege_above_90_count": 5}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1309.0, "fege": 430.0, "fege_above_90_count": 2}]}, "MDN15120260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 2095.0, "fege": 525.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 2262.0, "fege": 571.0, "fege_above_90_count": 7}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 2270.0, "fege": 540.0, "fege_above_90_count": 6}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 2274.0, "fege": 582.0, "fege_above_90_count": 4}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 2170.0, "fege": 540.0, "fege_above_90_count": 7}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 2151.0, "fege": 508.0, "fege_above_90_count": 8}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 2196.0, "fege": 511.0, "fege_above_90_count": 9}]}, "LBP11920260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1339.0, "fege": 338.0, "fege_above_90_count": 7}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1404.0, "fege": 336.0, "fege_above_90_count": 11}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1357.0, "fege": 352.0, "fege_above_90_count": 6}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1437.0, "fege": 370.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 8041.0, "packet_loss": null, "payload": 996.0, "fege": 345.0, "fege_above_90_count": 5}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1396.0, "fege": 342.0, "fege_above_90_count": 12}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1367.0, "fege": 342.0, "fege_above_90_count": 9}]}, "MDN27620260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1200.0, "fege": 435.0, "fege_above_90_count": 7}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1096.0, "fege": 474.0, "fege_above_90_count": 1}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1254.0, "fege": 531.0, "fege_above_90_count": 3}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1155.0, "fege": 426.0, "fege_above_90_count": 8}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1290.0, "fege": 424.0, "fege_above_90_count": 5}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1280.0, "fege": 477.0, "fege_above_90_count": 4}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1251.0, "fege": 419.0, "fege_above_90_count": 10}]}, "MDN01220260507": {"ref_date": "2026-05-07", "data": [{"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1695.0, "fege": 523.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1872.0, "fege": 493.0, "fege_above_90_count": 9}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1806.0, "fege": 518.0, "fege_above_90_count": 5}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1961.0, "fege": 523.0, "fege_above_90_count": 5}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1582.0, "fege": 472.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1642.0, "fege": 557.0, "fege_above_90_count": 3}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1690.0, "fege": 517.0, "fege_above_90_count": 5}]}, "KTN03820260423": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 2.0, "payload": 849.0, "fege": 133.0, "fege_above_90_count": 3}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 882.0, "fege": 137.0, "fege_above_90_count": 3}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 863.0, "fege": 139.0, "fege_above_90_count": 4}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 976.0, "fege": 176.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1090.0, "fege": 169.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1081.0, "fege": 162.0, "fege_above_90_count": 4}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1148.0, "fege": 184.0, "fege_above_90_count": 3}, {"day": "2026-05-04", "tnl": 1.0, "packet_loss": 0.0, "payload": 1042.0, "fege": 164.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 932.0, "fege": 154.0, "fege_above_90_count": 4}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1069.0, "fege": 163.0, "fege_above_90_count": 4}]}, "MDX15820260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1357.0, "fege": 476.0, "fege_above_90_count": 4}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1315.0, "fege": 458.0, "fege_above_90_count": 2}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1386.0, "fege": 456.0, "fege_above_90_count": 4}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1372.0, "fege": 466.0, "fege_above_90_count": 2}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1235.0, "fege": 404.0, "fege_above_90_count": 10}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1429.0, "fege": 470.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1408.0, "fege": 478.0, "fege_above_90_count": 3}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1482.0, "fege": 455.0, "fege_above_90_count": 8}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1582.0, "fege": 431.0, "fege_above_90_count": 11}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1583.0, "fege": 558.0, "fege_above_90_count": 1}]}, "MDN01620260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 878.0, "fege": 504.0, "fege_above_90_count": 9}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 881.0, "fege": 537.0, "fege_above_90_count": 4}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1084.0, "fege": 609.0, "fege_above_90_count": 4}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 966.0, "fege": 615.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 794.0, "fege": 568.0, "fege_above_90_count": 4}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1237.0, "fege": 690.0, "fege_above_90_count": 3}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1123.0, "fege": 623.0, "fege_above_90_count": 4}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 991.0, "fege": 535.0, "fege_above_90_count": 10}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 959.0, "fege": 530.0, "fege_above_90_count": 5}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 996.0, "fege": 537.0, "fege_above_90_count": 9}]}, "MDN20220260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1774.0, "fege": 442.0, "fege_above_90_count": 8}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 2.0, "payload": 1736.0, "fege": 474.0, "fege_above_90_count": 2}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1761.0, "fege": 438.0, "fege_above_90_count": 8}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1772.0, "fege": 466.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1959.0, "fege": 473.0, "fege_above_90_count": 9}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 2012.0, "fege": 456.0, "fege_above_90_count": 13}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1952.0, "fege": 456.0, "fege_above_90_count": 11}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1766.0, "fege": 440.0, "fege_above_90_count": 7}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1742.0, "fege": 448.0, "fege_above_90_count": 9}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1819.0, "fege": 437.0, "fege_above_90_count": 9}]}, "MDX12920260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": null, "payload": 648.0, "fege": 329.0, "fege_above_90_count": 1}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": null, "payload": 690.0, "fege": 254.0, "fege_above_90_count": 4}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": null, "payload": 762.0, "fege": 246.0, "fege_above_90_count": 4}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 705.0, "fege": 259.0, "fege_above_90_count": 9}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 738.0, "fege": 281.0, "fege_above_90_count": 4}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 756.0, "fege": 265.0, "fege_above_90_count": 5}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 786.0, "fege": 299.0, "fege_above_90_count": 3}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 731.0, "fege": 261.0, "fege_above_90_count": 5}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 747.0, "fege": 255.0, "fege_above_90_count": 6}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 759.0, "fege": 301.0, "fege_above_90_count": 2}]}, "MDN63920260406": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 14318.0, "packet_loss": null, "payload": 601.0, "fege": 99.0, "fege_above_90_count": 20}, {"day": "2026-04-28", "tnl": 6843.0, "packet_loss": null, "payload": 563.0, "fege": 150.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 8087.0, "packet_loss": null, "payload": 594.0, "fege": 144.0, "fege_above_90_count": 1}, {"day": "2026-04-30", "tnl": 303.0, "packet_loss": null, "payload": 626.0, "fege": 198.0, "fege_above_90_count": 7}, {"day": "2026-05-01", "tnl": 1.0, "packet_loss": null, "payload": 564.0, "fege": 191.0, "fege_above_90_count": 9}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 692.0, "fege": 197.0, "fege_above_90_count": 10}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 627.0, "fege": 195.0, "fege_above_90_count": 10}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 670.0, "fege": 196.0, "fege_above_90_count": 7}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 653.0, "fege": 199.0, "fege_above_90_count": 9}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 632.0, "fege": 190.0, "fege_above_90_count": 14}]}, "LBP85820260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 612.0, "fege": 203.0, "fege_above_90_count": 9}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 603.0, "fege": 203.0, "fege_above_90_count": 10}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 632.0, "fege": 202.0, "fege_above_90_count": 8}, {"day": "2026-04-30", "tnl": 3629.0, "packet_loss": 0.0, "payload": 614.0, "fege": 203.0, "fege_above_90_count": 8}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 699.0, "fege": 203.0, "fege_above_90_count": 13}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 603.0, "fege": 202.0, "fege_above_90_count": 10}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 681.0, "fege": 203.0, "fege_above_90_count": 11}, {"day": "2026-05-04", "tnl": 735.0, "packet_loss": 2.0, "payload": 584.0, "fege": 203.0, "fege_above_90_count": 3}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 616.0, "fege": 202.0, "fege_above_90_count": 9}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 594.0, "fege": 203.0, "fege_above_90_count": 7}]}, "MDN39220260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": null, "payload": 1326.0, "fege": 479.0, "fege_above_90_count": 3}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": null, "payload": 1341.0, "fege": 382.0, "fege_above_90_count": 7}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": null, "payload": 1338.0, "fege": 404.0, "fege_above_90_count": 4}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": null, "payload": 1324.0, "fege": 467.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": null, "payload": 1259.0, "fege": 447.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": null, "payload": 1340.0, "fege": 502.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": null, "payload": 1307.0, "fege": 552.0, "fege_above_90_count": 1}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": null, "payload": 1335.0, "fege": 484.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": null, "payload": 1282.0, "fege": 545.0, "fege_above_90_count": 1}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": null, "payload": 1306.0, "fege": 447.0, "fege_above_90_count": 4}]}, "MDN99420260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1134.0, "fege": 416.0, "fege_above_90_count": 2}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1086.0, "fege": 351.0, "fege_above_90_count": 4}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1115.0, "fege": 360.0, "fege_above_90_count": 4}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1044.0, "fege": 404.0, "fege_above_90_count": 2}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1240.0, "fege": 419.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1176.0, "fege": 370.0, "fege_above_90_count": 3}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1267.0, "fege": 383.0, "fege_above_90_count": 4}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1137.0, "fege": 405.0, "fege_above_90_count": 6}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1065.0, "fege": 395.0, "fege_above_90_count": 2}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1156.0, "fege": 477.0, "fege_above_90_count": 1}]}, "MDN05220260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1099.0, "fege": 417.0, "fege_above_90_count": 3}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1144.0, "fege": 473.0, "fege_above_90_count": 1}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1101.0, "fege": 608.0, "fege_above_90_count": 1}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1035.0, "fege": 500.0, "fege_above_90_count": 1}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1113.0, "fege": 493.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1161.0, "fege": 485.0, "fege_above_90_count": 2}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1195.0, "fege": 460.0, "fege_above_90_count": 5}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1084.0, "fege": 510.0, "fege_above_90_count": 1}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1132.0, "fege": 386.0, "fege_above_90_count": 6}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1094.0, "fege": 459.0, "fege_above_90_count": 1}]}, "MDN19120260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1526.0, "fege": 386.0, "fege_above_90_count": 6}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1552.0, "fege": 411.0, "fege_above_90_count": 5}, {"day": "2026-04-29", "tnl": 17010.0, "packet_loss": 0.0, "payload": 1485.0, "fege": 392.0, "fege_above_90_count": 8}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1506.0, "fege": 394.0, "fege_above_90_count": 8}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1596.0, "fege": 430.0, "fege_above_90_count": 3}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1432.0, "fege": 396.0, "fege_above_90_count": 4}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1536.0, "fege": 417.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1527.0, "fege": 393.0, "fege_above_90_count": 7}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1503.0, "fege": 388.0, "fege_above_90_count": 6}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 1458.0, "fege": 501.0, "fege_above_90_count": 1}]}, "LBP18320260430": {"ref_date": "2026-05-05", "data": [{"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 592.0, "fege": 210.0, "fege_above_90_count": 9}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 635.0, "fege": 209.0, "fege_above_90_count": 13}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 611.0, "fege": 210.0, "fege_above_90_count": 14}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 732.0, "fege": 210.0, "fege_above_90_count": 17}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 801.0, "fege": 211.0, "fege_above_90_count": 22}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 810.0, "fege": 210.0, "fege_above_90_count": 19}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 619.0, "fege": 211.0, "fege_above_90_count": 14}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 628.0, "fege": 210.0, "fege_above_90_count": 11}, {"day": "2026-05-06", "tnl": 1233.0, "packet_loss": 2.0, "payload": 557.0, "fege": 211.0, "fege_above_90_count": 8}]}, "LBP47320260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 1154.0, "fege": 339.0, "fege_above_90_count": 6}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 1195.0, "fege": 346.0, "fege_above_90_count": 4}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 1162.0, "fege": 415.0, "fege_above_90_count": 1}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 1313.0, "fege": 374.0, "fege_above_90_count": 3}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1433.0, "fege": 352.0, "fege_above_90_count": 9}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 1334.0, "fege": 428.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1388.0, "fege": 383.0, "fege_above_90_count": 4}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 1201.0, "fege": 387.0, "fege_above_90_count": 2}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 1244.0, "fege": 348.0, "fege_above_90_count": 9}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 1.0, "payload": 1293.0, "fege": 382.0, "fege_above_90_count": 3}]}, "MDX25920260420": {"ref_date": "2026-05-04", "data": [{"day": "2026-04-27", "tnl": 0.0, "packet_loss": 0.0, "payload": 943.0, "fege": 343.0, "fege_above_90_count": 2}, {"day": "2026-04-28", "tnl": 0.0, "packet_loss": 0.0, "payload": 806.0, "fege": 289.0, "fege_above_90_count": 6}, {"day": "2026-04-29", "tnl": 0.0, "packet_loss": 0.0, "payload": 801.0, "fege": 317.0, "fege_above_90_count": 2}, {"day": "2026-04-30", "tnl": 0.0, "packet_loss": 0.0, "payload": 854.0, "fege": 303.0, "fege_above_90_count": 4}, {"day": "2026-05-01", "tnl": 0.0, "packet_loss": 0.0, "payload": 1039.0, "fege": 347.0, "fege_above_90_count": 2}, {"day": "2026-05-02", "tnl": 0.0, "packet_loss": 0.0, "payload": 933.0, "fege": 354.0, "fege_above_90_count": 1}, {"day": "2026-05-03", "tnl": 0.0, "packet_loss": 0.0, "payload": 1077.0, "fege": 339.0, "fege_above_90_count": 2}, {"day": "2026-05-04", "tnl": 0.0, "packet_loss": 0.0, "payload": 866.0, "fege": 288.0, "fege_above_90_count": 5}, {"day": "2026-05-05", "tnl": 0.0, "packet_loss": 0.0, "payload": 799.0, "fege": 312.0, "fege_above_90_count": 5}, {"day": "2026-05-06", "tnl": 0.0, "packet_loss": 0.0, "payload": 856.0, "fege": 329.0, "fege_above_90_count": 2}]}};
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+let isDark = true;
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('themeBtn').textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+  refreshCharts();
+}
+function css(v) { return getComputedStyle(document.documentElement).getPropertyValue('--' + v).trim(); }
+
+// ── Chart helpers ─────────────────────────────────────────────────────────────
+const ALL_CHARTS = {};
+function tip() {
+  return {
+    backgroundColor: css('tip-bg'), borderColor: css('border'), borderWidth: 1,
+    padding: 12, titleColor: css('text'), bodyColor: css('text2'),
+  };
+}
+
+// ── 1. Trend Line ─────────────────────────────────────────────────────────────
+ALL_CHARTS.trend = new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: TREND_LABELS,
+    datasets: [
+      { label:'Open',    data:TREND_OPENED,   borderColor:'#4f8ef7', backgroundColor:'rgba(79,142,247,0.08)',  borderWidth:2.5, pointRadius:5, pointHoverRadius:7, fill:true, tension:0.4 },
+      { label:'Closed',  data:TREND_CLOSED,   borderColor:'#3ecf8e', backgroundColor:'rgba(62,207,142,0.07)', borderWidth:2.5, pointRadius:5, pointHoverRadius:7, fill:true, tension:0.4 },
+      { label:'Cleared', data:TREND_CLEARED,  borderColor:'#6b7280', backgroundColor:'rgba(107,114,128,0.06)',borderWidth:2,   pointRadius:4, pointHoverRadius:6, fill:true, tension:0.4 },
+      { label:'ReOpen',  data:TREND_REOPENED, borderColor:'#f97316', backgroundColor:'rgba(249,115,22,0.06)', borderWidth:2,   pointRadius:4, pointHoverRadius:6, fill:true, tension:0.4 }
+    ]
+  },
+  options: {
+    responsive:true, interaction:{mode:'index',intersect:false},
+    plugins:{ legend:{position:'top',labels:{boxWidth:12,padding:16,usePointStyle:true,color:css('muted')}}, tooltip:{...tip(),callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y} tiket`}} },
+    scales:{
+      x:{grid:{color:css('grid')},ticks:{color:css('muted')}},
+      y:{grid:{color:css('grid')},ticks:{color:css('muted'),stepSize:1},beginAtZero:true},
+    },
+  }
+});
+
+// ── 2. Status Donut ───────────────────────────────────────────────────────────
+const sumOf = a => a.reduce((s,v)=>s+v,0);
+ALL_CHARTS.donut = new Chart(document.getElementById('donutChart'), {
+  type:'doughnut',
+  data:{
+    labels:['Open','Closed','Cleared','ReOpen'],
+    datasets:[{data:[sumOf(TREND_OPENED),sumOf(TREND_CLOSED),sumOf(TREND_CLEARED),sumOf(TREND_REOPENED)],backgroundColor:['#4f8ef7','#3ecf8e','#6b7280','#f97316'],borderColor:css('surface'),borderWidth:3,hoverOffset:8}]
+  },
+  options:{
+    responsive:true,cutout:'68%',
+    plugins:{legend:{position:'bottom',labels:{padding:14,boxWidth:12,usePointStyle:true,color:css('muted')}},tooltip:{...tip(),callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} tiket`}}},
+  }
+});
+
+// ── 3. Cleared Tickets Filter ─────────────────────────────────────────────────
+(function() {
+  const CAT_COLORS = {
+    'License Transport Issue':   '#4f8ef7',
+    'Replace LAN Cable':         '#f97316',
+    'Need Update database BW':   '#a78bfa',
+    'Intermediate Issue':        '#fbbf24',
+    'Troubleshooting':           '#3ecf8e',
+    'Temuan Lapangan':           '#06b6d4',
+    'Cleared by System':         '#7c82a0',
+  };
+
+  const sel     = document.getElementById('catFilter');
+  const tbody   = document.getElementById('clearedTable');
+  const countEl = document.getElementById('clearedCount');
+  const summaryEl = document.getElementById('catSummary');
+
+  // Populate dropdown with unique categories from data
+  const cats = [...new Set(CLEARED_DATA.map(r => r.category))];
+
+  // Category summary chips
+  const totalChip = document.createElement('div');
+  totalChip.className = 'cat-chip';
+  totalChip.innerHTML = `<span class="cat-chip-val">${CLEARED_DATA.length}</span><span class="cat-chip-lbl">Total Closed</span>`;
+  totalChip.style.borderColor = 'var(--blue)';
+  summaryEl.appendChild(totalChip);
+  cats.forEach(cat => {
+    const count = CLEARED_DATA.filter(r => r.category === cat).length;
+    const col = CAT_COLORS[cat] || '#7c82a0';
+    const chip = document.createElement('div');
+    chip.className = 'cat-chip';
+    chip.style.borderColor = col;
+    chip.innerHTML = `<span class="cat-chip-val" style="color:${col}">${count}</span><span class="cat-chip-lbl">${cat}</span>`;
+    chip.style.cursor = 'pointer';
+    chip.title = 'Filter: ' + cat;
+    chip.addEventListener('click', () => {
+      sel.value = cat;
+      sel.dispatchEvent(new Event('change'));
+    });
+    summaryEl.appendChild(chip);
+  });
+  cats.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = cat + ' (' + CLEARED_DATA.filter(r => r.category === cat).length + ')';
+    sel.appendChild(opt);
+  });
+
+  // Update "Semua" label with total count
+  sel.options[0].textContent = 'Semua Kategori (' + CLEARED_DATA.length + ')';
+
+  function renderCleared(cat) {
+    const rows = cat === 'ALL' ? CLEARED_DATA : CLEARED_DATA.filter(r => r.category === cat);
+    countEl.textContent = rows.length + ' tiket ditampilkan';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px">Tidak ada data.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const col = CAT_COLORS[r.category] || '#7c82a0';
+      return `<tr>
+        <td><code>${r.ticket_id}</code></td>
+        <td>${r.site_id}</td>
+        <td>${r.nop}</td>
+        <td>${r.clear_date}</td>
+        <td><span class="pill" style="background:${col}22;color:${col};border:1px solid ${col}44">${r.category}</span></td>
+        <td style="max-width:220px;white-space:normal;line-height:1.5">${r.note}</td>
+        <td style="color:var(--muted)">${r.closed_by}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  sel.addEventListener('change', () => renderCleared(sel.value));
+  renderCleared('ALL');
+})();
+
+// ── 5. Payload Horizontal Bar ─────────────────────────────────────────────────
+if (PAY_LABELS.length > 0) {
+  ALL_CHARTS.payload = new Chart(document.getElementById('payloadChart'), {
+    type:'bar',
+    data:{
+      labels:PAY_LABELS,
+      datasets:[
+        {label:'Payload GB (Open)',  data:PAY_BEFORE,backgroundColor:'rgba(244,63,94,0.65)', borderRadius:4,borderSkipped:false},
+        {label:'Payload GB (Clear)', data:PAY_AFTER, backgroundColor:PAY_COLORS,             borderRadius:4,borderSkipped:false},
+      ]
+    },
+    options:{
+      indexAxis:'y',responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{boxWidth:12,usePointStyle:true,color:css('muted')}},
+        tooltip:{...tip(),callbacks:{label:ctx=>` ${ctx.dataset.label}: ${(ctx.parsed.x??0).toFixed(2)} GB`}},
+      },
+      scales:{
+        x:{grid:{color:css('grid')},ticks:{color:css('muted'),callback:v=>v+' GB'},beginAtZero:true},
+        y:{grid:{display:false},ticks:{color:css('muted'),font:{size:11}}},
+      },
+    }
+  });
+} else {
+  document.getElementById('payloadChart').closest('.panel').innerHTML +=
+    '<p style="color:var(--muted);text-align:center;padding:32px 0">Belum ada data cleared 7 hari terakhir.</p>';
+}
+
+// ── 6. Payload Donut ──────────────────────────────────────────────────────────
+ALL_CHARTS.payDonut = new Chart(document.getElementById('payloadDonut'), {
+  type:'doughnut',
+  data:{
+    labels:['Improve ✅','No Improve ❌'],
+    datasets:[{data:[TOTAL_IMPROVED,TOTAL_NOT_IMPROVED],backgroundColor:['#3ecf8e','#f43f5e'],borderColor:css('surface'),borderWidth:3,hoverOffset:8}]
+  },
+  options:{
+    responsive:true,cutout:'65%',
+    plugins:{legend:{position:'bottom',labels:{padding:16,boxWidth:12,usePointStyle:true,color:css('muted')}},tooltip:{...tip(),callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} tiket`}}},
+  }
+});
+
+// ── 7. KPI Sidebar ────────────────────────────────────────────────────────────
+let _kpiChartInstances = [];
+
+function closeKpiSidebar() {
+  document.getElementById('kpiSidebar').classList.remove('open');
+}
+
+function _vertLinePlugin(refLabel) {
+  return {
+    id: 'vertLine',
+    afterDraw(chart) {
+      const idx = chart.data.labels.indexOf(refLabel);
+      if (idx < 0) return;
+      const { ctx, scales } = chart;
+      const x = scales.x;
+      const y = scales.y || Object.values(scales).find(s => s.axis === 'y');
+      if (!x || !y) return;
+      const xPos = x.getPixelForValue(idx);
+      ctx.save();
+      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = 'rgba(251,191,36,0.85)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(xPos, y.top);
+      ctx.lineTo(xPos, y.bottom);
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
+}
+
+function _renderKpiMini(container, label, color, shortDays, values, refLabel) {
+  const wrap = document.createElement('div');
+  wrap.className = 'kpi-chart-wrap';
+  const lbl = document.createElement('div');
+  lbl.className = 'kpi-metric-label';
+  lbl.textContent = label;
+  const canvas = document.createElement('canvas');
+  canvas.height = 80;
+  wrap.appendChild(lbl);
+  wrap.appendChild(canvas);
+  container.appendChild(wrap);
+  const inst = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: shortDays,
+      datasets: [{
+        data: values,
+        borderColor: color,
+        backgroundColor: color + '22',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.4,
+        spanGaps: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tip(), callbacks: { label: ctx => ` ${(ctx.parsed.y ?? 0).toFixed(2)}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: css('muted'), font: { size: 9 } } },
+        y: { grid: { color: css('grid') }, ticks: { color: css('muted'), font: { size: 9 }, maxTicksLimit: 4 }, beginAtZero: false },
+      },
+    },
+    plugins: refLabel ? [_vertLinePlugin(refLabel)] : [],
+  });
+  _kpiChartInstances.push(inst);
+}
+
+function _renderKpiFege(container, shortDays, fegeValues, above90Values, refLabel) {
+  const wrap = document.createElement('div');
+  wrap.className = 'kpi-chart-wrap';
+  const lbl = document.createElement('div');
+  lbl.className = 'kpi-metric-label';
+  lbl.textContent = 'FEGE (Mbps) & Count >90% FEGE';
+  const canvas = document.createElement('canvas');
+  canvas.height = 90;
+  wrap.appendChild(lbl);
+  wrap.appendChild(canvas);
+  container.appendChild(wrap);
+  const inst = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: shortDays,
+      datasets: [
+        {
+          label: 'FEGE (Mbps)',
+          data: fegeValues,
+          borderColor: '#3ecf8e',
+          backgroundColor: '#3ecf8e18',
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: true,
+          tension: 0.4,
+          spanGaps: true,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Count FEGE >90%',
+          data: above90Values,
+          borderColor: '#fbbf24',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [4, 2],
+          pointRadius: 3,
+          tension: 0.3,
+          spanGaps: true,
+          yAxisID: 'y2',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { boxWidth: 10, padding: 8, usePointStyle: true, color: css('muted'), font: { size: 9 } } },
+        tooltip: { ...tip(), callbacks: { label: ctx => ` ${ctx.dataset.label}: ${(ctx.parsed.y ?? 0).toFixed(ctx.datasetIndex === 1 ? 0 : 2)}` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: css('muted'), font: { size: 9 } } },
+        y:  { position: 'left',  grid: { color: css('grid') }, ticks: { color: '#3ecf8e', font: { size: 9 }, maxTicksLimit: 4 }, beginAtZero: false },
+        y2: { position: 'right', grid: { display: false },     ticks: { color: '#fbbf24', font: { size: 9 }, maxTicksLimit: 4, stepSize: 1 }, beginAtZero: true, max: 24 },
+      },
+    },
+    plugins: refLabel ? [_vertLinePlugin(refLabel)] : [],
+  });
+  _kpiChartInstances.push(inst);
+}
+
+function openKpiSidebar(ticketId, siteId, siteName) {
+  _kpiChartInstances.forEach(c => c.destroy());
+  _kpiChartInstances = [];
+
+  document.getElementById('kpiSiteTitle').textContent = siteId + (siteName && siteName !== siteId ? ' — ' + siteName : '');
+  const container = document.getElementById('kpiChartsContainer');
+  container.innerHTML = '';
+
+  const entry = KPI_DATA[ticketId];
+  if (!entry || !entry.data || !entry.data.length) {
+    container.innerHTML = '<div class="kpi-no-data">Tidak ada data KPI<br>untuk site ini.</div>';
+    document.getElementById('kpiSidebar').classList.add('open');
+    return;
+  }
+
+  const rows     = entry.data;
+  const refDate  = entry.ref_date;
+  const refLabel = refDate ? refDate.slice(5) : null;
+  const shortDays = rows.map(r => r.day.slice(5));
+
+  _renderKpiMini(container, 'TNL / Tn.Fail',    '#f43f5e', shortDays, rows.map(r => r.tnl),         refLabel);
+  _renderKpiMini(container, 'Packet Loss Twamp', '#f97316', shortDays, rows.map(r => r.packet_loss),  refLabel);
+  _renderKpiMini(container, 'Payload (GB)',      '#4f8ef7', shortDays, rows.map(r => r.payload),      refLabel);
+  _renderKpiFege(container, shortDays, rows.map(r => r.fege), rows.map(r => r.fege_above_90_count), refLabel);
+
+  document.getElementById('kpiSidebar').classList.add('open');
+}
+
+document.addEventListener('click', function(e) {
+  const sidebar = document.getElementById('kpiSidebar');
+  if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && !e.target.closest('.leaflet-marker-icon')) {
+    closeKpiSidebar();
+  }
+});
+
+// ── 8. Dual Site Map ─────────────────────────────────────────────────────────
+function _buildLeafletMap(elId, markers, dotColor) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+
+  const map = L.map(elId, { zoomControl: true, zoomSnap: 0.25 });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const bounds = [];
+  markers.forEach(m => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="site-dot ${dotColor}"></div>`,
+      iconSize: [12,12], iconAnchor: [6,6], popupAnchor: [0,-10],
+    });
+    const marker = L.marker([m.lat, m.lon], { icon }).addTo(map);
+    if (m.popup) marker.bindPopup(m.popup);
+    if (m.ticketId) marker.on('click', () => openKpiSidebar(m.ticketId, m.siteId, m.siteName || m.siteId));
+    bounds.push([m.lat, m.lon]);
+  });
+
+  if (!bounds.length) {
+    map.setView([-2.5, 102.0], 8);
+    el.style.position = 'relative';
+    el.insertAdjacentHTML('beforeend',
+      '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#888;font-size:13px;pointer-events:none;z-index:999">Tidak ada data</div>');
+    return;
+  }
+  if (bounds.length === 1) { map.setView(bounds[0], 12); return; }
+
+  const sLat = bounds.map(b=>b[0]).sort((a,b)=>a-b);
+  const sLon = bounds.map(b=>b[1]).sort((a,b)=>a-b);
+  const mLat = sLat[Math.floor(sLat.length/2)];
+  const mLon = sLon[Math.floor(sLon.length/2)];
+  const core = bounds.filter(([la,lo]) => Math.abs(la-mLat)<2.5 && Math.abs(lo-mLon)<2.5);
+  map.fitBounds(core.length>1 ? core : bounds, { padding:[50,50], maxZoom:12 });
+}
+
+// Left map — open tickets, payload menurun (merah)
+(function() {
+  const markers = [];
+  OPEN_MAP_DATA.forEach(r => {
+    const c = SITE_COORDS[r.site_id];
+    if (!c) return;
+    const deltaStr = r.delta !== null ? r.delta.toFixed(2) + ' GB' : '-';
+    markers.push({
+      lat: c.lat, lon: c.lon,
+      siteId: r.site_id, siteName: c.name, ticketId: r.ticket_id,
+      popup: `<div style="font-size:13px;line-height:1.8">
+        <strong>${r.site_id}</strong> — ${c.name}<br>
+        <span style="color:#888">NOP:</span> ${r.nop}<br>
+        <span style="color:#888">Status:</span> ${r.ticket_status}<br>
+        <span style="color:#888">Aging:</span> ${r.aging} hari<br>
+        <span style="color:#888">Open sejak:</span> ${r.open_date}<br>
+        <span style="color:#888">Delta payload:</span>
+        <strong style="color:#f43f5e">${deltaStr}</strong><br>
+        <em style="color:#888;font-size:11px">Klik untuk lihat KPI trend</em>
+      </div>`,
+    });
+  });
+  _buildLeafletMap('mapLeft', markers, 'dot-red');
+})();
+
+// Right map — cleared tickets, payload naik (hijau)
+(function() {
+  const markers = [];
+  PAYLOAD_DATA.filter(r => r.improved).forEach(r => {
+    const c = SITE_COORDS[r.site_id];
+    if (!c) return;
+    const sign = r.delta > 0 ? '+' : '';
+    markers.push({
+      lat: c.lat, lon: c.lon,
+      siteId: r.site_id, siteName: c.name, ticketId: r.ticket_id,
+      popup: `<div style="font-size:13px;line-height:1.8">
+        <strong>${r.site_id}</strong> — ${c.name}<br>
+        <span style="color:#888">NOP:</span> ${r.nop}<br>
+        <span style="color:#888">Clear:</span> ${r.clear_date}<br>
+        <span style="color:#888">Delta payload:</span>
+        <strong style="color:#3ecf8e">${sign}${r.delta.toFixed(2)} GB</strong><br>
+        ✅ Payload Improve<br>
+        <em style="color:#888;font-size:11px">Klik untuk lihat KPI trend</em>
+      </div>`,
+    });
+  });
+  _buildLeafletMap('mapRight', markers, 'dot-green');
+})();
+// ── 8. NOP Table ──────────────────────────────────────────────────────────────
+const agMap = {};
+AGING_DATA.forEach(r => { agMap[r.nop] = r; });
+const nopTbody = document.getElementById('nopTable');
+if (!NOP_SUMMARY.length) {
+  nopTbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Belum ada data.</td></tr>';
+} else {
+  NOP_SUMMARY.forEach(row => {
+    const ag = agMap[row.nop] || {};
+    const tot = (row.total_open||0);
+    nopTbody.innerHTML += `<tr>
+      <td><strong>${row.nop}</strong></td>
+      <td><span class="pill open">${row.total_open||0}</span></td>
+      <td><span class="pill needclose">${row.total_needclose||0}</span></td>
+      <td><strong>${tot}</strong></td>
+      <td>${ag.bracket_0_3||0}</td>
+      <td style="color:var(--yellow)">${ag.bracket_4_7||0}</td>
+      <td style="color:var(--orange)">${ag.bracket_8_14||0}</td>
+      <td style="color:var(--red);font-weight:700">${ag.bracket_14_plus||0}</td>
+    </tr>`;
+  });
+}
+
+// ── Chat API URL ──────────────────────────────────────────────────────────────
+const CHAT_API_URL = "/api/chat";
+
+// ── Chat Widget ───────────────────────────────────────────────────────────────
+let _chatOpen = false;
+
+function toggleChat() {
+  _chatOpen = !_chatOpen;
+  document.getElementById('chatPanel').classList.toggle('open', _chatOpen);
+  if (_chatOpen) document.getElementById('chatInput').focus();
+}
+
+function _buildDashboardContext() {
+  const lines = [];
+  const sumOf = a => (a || []).reduce((s, v) => s + (v || 0), 0);
+
+  lines.push(`Tanggal data: 07 May 2026`);
+  lines.push('');
+
+  lines.push('## Status per NOP:');
+  (NOP_SUMMARY || []).forEach(r => {
+    const ag = (AGING_DATA || []).find(a => a.nop === r.nop) || {};
+    lines.push(`${r.nop}: Open/ReOpen=${r.total_open||0}, NeedClose=${r.total_needclose||0}, >14hr=${ag.bracket_14_plus||0}, 8-14hr=${ag.bracket_8_14||0}`);
+  });
+  lines.push('');
+
+  lines.push('## Trend 7 Hari Terakhir:');
+  lines.push(`Open=${sumOf(TREND_OPENED)}, Closed=${sumOf(TREND_CLOSED)}, Cleared=${sumOf(TREND_CLEARED)}, ReOpen=${sumOf(TREND_REOPENED)}`);
+  lines.push('');
+
+  lines.push(`## Payload Improvement (Cleared 7 hari): Improve=${TOTAL_IMPROVED}, No Improve=${TOTAL_NOT_IMPROVED}`);
+  lines.push('');
+
+  if ((OPEN_MAP_DATA || []).length) {
+    lines.push('## Site Open (Payload Menurun):');
+    OPEN_MAP_DATA.slice(0, 25).forEach(r => {
+      lines.push(`${r.site_id}(${r.nop}): aging=${r.aging}hr, delta=${r.delta}GB, status=${r.ticket_status}`);
+    });
+    if (OPEN_MAP_DATA.length > 25) lines.push(`...dan ${OPEN_MAP_DATA.length - 25} site lainnya`);
+    lines.push('');
+  }
+
+  if ((CLEARED_DATA || []).length) {
+    lines.push('## Tiket Closed 7 Hari:');
+    CLEARED_DATA.slice(0, 30).forEach(r => {
+      lines.push(`${r.ticket_id}|${r.site_id}(${r.nop})|${r.clear_date}|${r.category}|${r.closed_by}`);
+    });
+    if (CLEARED_DATA.length > 30) lines.push(`...dan ${CLEARED_DATA.length - 30} tiket lainnya`);
+  }
+
+  return lines.join('\n');
+}
+
+function _appendMsg(role, text) {
+  const messages = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+  bubble.textContent = text;
+  div.appendChild(bubble);
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return bubble;
+}
+
+function _showTyping() {
+  const messages = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ai';
+  div.id = '_chatTyping';
+  div.innerHTML = '<div class="chat-typing"><span></span><span></span><span></span></div>';
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function _removeTyping() {
+  const el = document.getElementById('_chatTyping');
+  if (el) el.remove();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('chatSendBtn');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  sendBtn.disabled = true;
+  _appendMsg('user', question);
+  _showTyping();
+
+  try {
+    const context = _buildDashboardContext();
+    const resp = await fetch(CHAT_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, context }),
+    });
+
+    _removeTyping();
+    const aiBubble = _appendMsg('ai', '');
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let aiText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const payload = part.slice(6).trim();
+        if (payload === '[DONE]') break;
+        try {
+          const chunk = JSON.parse(payload);
+          if (chunk.error) { aiBubble.textContent = chunk.error; break; }
+          if (chunk.text) {
+            aiText += chunk.text;
+            aiBubble.textContent = aiText;
+            document.getElementById('chatMessages').scrollTop = 99999;
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (err) {
+    _removeTyping();
+    _appendMsg('ai', 'Gagal menghubungi server. Pastikan dashboard diakses dari Vercel ya.');
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+// ── Refresh chart colors on theme switch ──────────────────────────────────────
+function refreshCharts() {
+  const gc = css('grid'), mc = css('muted'), tc = css('surface'),
+        tipBg = css('tip-bg'), bc = css('border'), tx = css('text'), tx2 = css('text2');
+  Object.values(ALL_CHARTS).forEach(ch => {
+    if (!ch) return;
+    if (ch.options.plugins?.legend?.labels) ch.options.plugins.legend.labels.color = mc;
+    if (ch.options.plugins?.tooltip) Object.assign(ch.options.plugins.tooltip, {
+      backgroundColor: tipBg, borderColor: bc, titleColor: tx, bodyColor: tx2,
+    });
+    Object.values(ch.options.scales || {}).forEach(s => {
+      if (s.grid && s.grid.color !== undefined) s.grid.color = gc;
+      if (s.ticks) s.ticks.color = mc;
+    });
+    ch.data.datasets?.forEach(ds => {
+      if (typeof ds.borderColor === 'string' && (ds.borderColor.startsWith('#1a') || ds.borderColor.startsWith('#ff')))
+        ds.borderColor = tc;
+    });
+    ch.update('none');
+  });
+}
+</script>
+</body>
+</html>
